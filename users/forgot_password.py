@@ -9,10 +9,7 @@ import subprocess
 from PIL import Image
 
 from config import connect_db
-from utils import hash_password, setup_environment
-
-# Set environment variables
-setup_environment()
+from utils_file import hash_password
 
 class ForgotPasswordApp:
     def __init__(self, root):

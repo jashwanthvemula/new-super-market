@@ -11,10 +11,9 @@ import re
 
 from admin.admin_nav import AdminNavigation
 from config import connect_db
-from utils import hash_password, setup_environment
+from utils_file import hash_password
 
-# Set environment variables
-setup_environment()
+
 
 class AdminApp:
     def __init__(self, root, username=None):

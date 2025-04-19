@@ -8,10 +8,7 @@ from tkinter import messagebox
 import subprocess
 
 from config import connect_db
-from utils import setup_environment
 
-# Set environment variables
-setup_environment()
 
 class OrderDetailsApp:
     def __init__(self, root, order_id, username):

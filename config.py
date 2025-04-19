@@ -2,11 +2,18 @@ import mysql.connector
 from tkinter import messagebox
 
 # Database configuration
+# DB_CONFIG = {
+#     "host": "141.209.241.57",
+#     "user": "kshat1m",
+#     "password": "mypass",
+#     "database": "BIS698W1700_GRP2"
+# }
 DB_CONFIG = {
-    "host": "141.209.241.57",
-    "user": "kshat1m",
-    "password": "mypass",
-    "database": "BIS698W1700_GRP2"
+    "host": "127.0.0.1",
+    "user": "root",
+    "password": "new_password",
+    "database": "supermarketdb",
+   
 }
 
 def connect_db():

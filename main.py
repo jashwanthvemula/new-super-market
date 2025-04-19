@@ -7,10 +7,10 @@ from tkinter import messagebox
 import shutil
 
 from config import connect_db, DB_CONFIG
-from utils import setup_environment
+
 
 # Set environment variables
-setup_environment()
+
 
 def connect_db_without_database():
     """Connect to MySQL without specifying a database"""
@@ -138,7 +138,7 @@ def create_default_user(cursor, conn):
         if count == 0:
             print("Creating default users")
             # Create an admin user
-            from utils import hash_password
+            from utils_file import hash_password
             hashed_password = hash_password("admin123")
             cursor.execute("""
             INSERT INTO Users (first_name, last_name, username, email, password, role)

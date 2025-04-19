@@ -11,10 +11,7 @@ import datetime
 
 from users.users_nav import UserNavigation
 from config import connect_db
-from utils import read_login_file, write_login_file, setup_environment
-
-# Set environment variables
-setup_environment()
+from utils_file import read_login_file, write_login_file
 
 class UserApp:
     def __init__(self, root, username=None):

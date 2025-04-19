@@ -77,7 +77,3 @@ def check_password_strength(password):
         return score, "Very strong password"
 
 # Environment setup
-def setup_environment():
-    """Set up environment variables for Tkinter"""
-    os.environ['TCL_LIBRARY'] = r"C:\Users\buvan\AppData\Local\Programs\Python\Python39\tcl\tcl8.6"
-    os.environ['TK_LIBRARY'] = r"C:\Users\buvan\AppData\Local\Programs\Python\Python39\tcl\tk8.6"
