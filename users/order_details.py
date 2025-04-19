@@ -7,7 +7,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 import subprocess
 
-from config import connect_db
+from config_db import connect_db
 
 
 class OrderDetailsApp:

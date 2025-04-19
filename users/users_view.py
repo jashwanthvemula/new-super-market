@@ -10,7 +10,7 @@ import subprocess
 import datetime
 
 from users.users_nav import UserNavigation
-from config import connect_db
+from config_db import connect_db
 from utils_file import read_login_file, write_login_file
 
 class UserApp:

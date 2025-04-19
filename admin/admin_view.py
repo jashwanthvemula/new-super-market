@@ -10,7 +10,7 @@ import hashlib
 import re
 
 from admin.admin_nav import AdminNavigation
-from config import connect_db
+from config_db import connect_db
 from utils_file import hash_password
 
 

@@ -6,7 +6,7 @@ import subprocess
 from tkinter import messagebox
 import shutil
 
-from config import connect_db, DB_CONFIG
+from config_db import connect_db, DB_CONFIG
 
 
 # Set environment variables

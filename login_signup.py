@@ -8,7 +8,7 @@ import subprocess
 import re
 import sys
 
-from config import connect_db
+from config_db import connect_db
 from utils_file import hash_password, check_password_strength, write_login_file
 
 # Set environment variables

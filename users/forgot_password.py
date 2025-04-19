@@ -8,7 +8,7 @@ from tkinter import messagebox
 import subprocess
 from PIL import Image
 
-from config import connect_db
+from config_db import connect_db
 from utils_file import hash_password
 
 class ForgotPasswordApp:
