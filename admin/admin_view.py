@@ -15,6 +15,25 @@ from admin.admin_nav import AdminNavigation
 from config_db import connect_db
 from utils_file import hash_password, read_login_file, write_login_file
 
+from admin.admin_nav import AdminNavigation
+
+# Then, ensure the AdminNavigationExtended class is defined in the same file
+# before it's used in the setup_main_ui method. The definition should look like this:
+
+class AdminNavigationExtended(AdminNavigation):
+    def __init__(self, parent_frame, admin_app):
+        self.admin_app = admin_app
+        super().__init__(parent_frame)
+    
+    def navigate_to(self, destination):
+        if destination == "Manage Inventory":
+            self.admin_app.show_inventory_management()
+        elif destination == "Manage Users":
+            self.admin_app.show_user_management()
+        elif destination == "Generate Report":
+            self.admin_app.show_report_generation()
+        elif destination == "Logout":
+            self.admin_app.logout()
 class AdminApp:
     def __init__(self, root, username=None):
         self.root = root
