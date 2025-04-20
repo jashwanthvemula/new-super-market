@@ -16,7 +16,20 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from admin.admin_nav import AdminNavigation
 from config_db import connect_db
 from utils_file import hash_password, read_login_file, write_login_file
-
+class AdminNavigationExtended(AdminNavigation):
+    def _init_(self, parent_frame, admin_app):
+        self.admin_app = admin_app
+        super()._init_(parent_frame)
+    
+    def navigate_to(self, destination):
+        if destination == "Manage Inventory":
+            self.admin_app.show_inventory_management()
+        elif destination == "Manage Users":
+            self.admin_app.show_user_management()
+        elif destination == "Generate Report":
+            self.admin_app.show_report_generation()
+        elif destination == "Logout":
+            self.admin_app.logout()
 class AdminNavigationExtended(AdminNavigation):
     def __init__(self, parent_frame, admin_app):
         self.admin_app = admin_app
@@ -39,7 +52,7 @@ class AdminNavigationExtended(AdminNavigation):
             self.admin_app.show_report_generation()
         elif destination == "Logout":
             self.admin_app.logout()
-    
+
     def update_navigation_highlight(self):
         # This method would visually highlight the current section in the navigation menu
         # In a real implementation, this would update the styling of the navigation buttons
@@ -160,7 +173,11 @@ class AdminApp:
                 self.user_tabview.pack(fill="both", expand=True, padx=10, pady=10)
             else:
                 self.user_tabview.pack(fill="both", expand=True, padx=30, pady=10)
-    
+    def clear_inventory_search(self):
+        """Clear the inventory search field and refresh the table"""
+        if hasattr(self, 'inventory_search'):
+            self.inventory_search.delete(0, 'end')
+            self.refresh_inventory_table()
     def adjust_reports_layout(self, width, height):
         """Adjust the reports layout based on window size"""
         # For report tabs, adjust the layout of panels for smaller screens
