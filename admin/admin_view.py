@@ -1451,6 +1451,942 @@ class AdminApp:
             if connection and connection.is_connected():
                 cursor.close()
                 connection.close()
+    def show_report_generation(self):
+        self.clear_content_frame()
+        
+        # Header
+        header_label = ctk.CTkLabel(self.content_frame, text="Report Generation",
+                                font=("Arial", 24, "bold"), text_color="#2563eb")
+        header_label.pack(anchor="w", padx=30, pady=(30, 20))
+        
+        # Create tabview for different report types
+        tabview = ctk.CTkTabview(self.content_frame, corner_radius=15)
+        tabview.pack(fill="both", expand=True, padx=30, pady=10)
+        
+        # Create tabs
+        sales_tab = tabview.add("Sales Report")
+        inventory_tab = tabview.add("Inventory Report")
+        user_tab = tabview.add("User Activity")
+        
+        # ===== Sales Report Tab =====
+        self.setup_sales_report_tab(sales_tab)
+        
+        # ===== Inventory Report Tab =====
+        self.setup_inventory_report_tab(inventory_tab)
+        
+        # ===== User Activity Tab =====
+        self.setup_user_activity_tab(user_tab)
+
+    def setup_sales_report_tab(self, parent_frame):
+        # Main container
+        report_frame = ctk.CTkFrame(parent_frame, fg_color="white", corner_radius=10)
+        report_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Options Section
+        options_frame = ctk.CTkFrame(report_frame, fg_color="white", corner_radius=10,
+                                border_width=1, border_color="#e5e7eb")
+        options_frame.pack(fill="x", padx=20, pady=10)
+        
+        options_label = ctk.CTkLabel(options_frame, text="Report Options",
+                                    font=("Arial", 18, "bold"), text_color="#2563eb")
+        options_label.pack(anchor="w", padx=20, pady=(15, 10))
+        
+        # Date Range
+        date_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        date_frame.pack(fill="x", padx=20, pady=10)
+        
+        period_label = ctk.CTkLabel(date_frame, text="Time Period:", font=("Arial", 14), text_color="gray")
+        period_label.pack(side="left", padx=(0, 10))
+        
+        # Period options
+        self.sales_period_var = ctk.StringVar(value="last_30_days")
+        
+        # Create period radio buttons
+        periods = [
+            ("Last 7 Days", "last_7_days"),
+            ("Last 30 Days", "last_30_days"),
+            ("Last 90 Days", "last_90_days"),
+            ("This Year", "this_year"),
+            ("Custom Range", "custom_range")
+        ]
+        
+        period_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        period_frame.pack(fill="x", padx=20, pady=(0, 10))
+        
+        for text, value in periods:
+            radio = ctk.CTkRadioButton(period_frame, text=text, variable=self.sales_period_var, 
+                                    value=value, command=self.toggle_custom_date_range)
+            radio.pack(side="left", padx=(0, 15))
+        
+        # Custom date range frame (hidden by default)
+        self.custom_date_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        
+        # From date
+        from_frame = ctk.CTkFrame(self.custom_date_frame, fg_color="transparent")
+        from_frame.pack(side="left", padx=(20, 10))
+        
+        from_label = ctk.CTkLabel(from_frame, text="From:", font=("Arial", 14), text_color="gray")
+        from_label.pack(side="left", padx=(0, 5))
+        
+        self.sales_from_date = ctk.CTkEntry(from_frame, placeholder_text="YYYY-MM-DD",
+                                    width=150, height=30, corner_radius=5)
+        self.sales_from_date.pack(side="left")
+        
+        # To date
+        to_frame = ctk.CTkFrame(self.custom_date_frame, fg_color="transparent")
+        to_frame.pack(side="left")
+        
+        to_label = ctk.CTkLabel(to_frame, text="To:", font=("Arial", 14), text_color="gray")
+        to_label.pack(side="left", padx=(0, 5))
+        
+        self.sales_to_date = ctk.CTkEntry(to_frame, placeholder_text="YYYY-MM-DD",
+                                    width=150, height=30, corner_radius=5)
+        self.sales_to_date.pack(side="left")
+        
+        # Report Format
+        format_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        format_frame.pack(fill="x", padx=20, pady=10)
+        
+        format_label = ctk.CTkLabel(format_frame, text="Format:", font=("Arial", 14), text_color="gray")
+        format_label.pack(side="left", padx=(0, 10))
+        
+        self.sales_format_var = ctk.StringVar(value="csv")
+        
+        csv_radio = ctk.CTkRadioButton(format_frame, text="CSV", variable=self.sales_format_var, value="csv")
+        csv_radio.pack(side="left", padx=(0, 15))
+        
+        txt_radio = ctk.CTkRadioButton(format_frame, text="Text", variable=self.sales_format_var, value="txt")
+        txt_radio.pack(side="left")
+        
+        # Generate Report Button
+        button_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        button_frame.pack(fill="x", padx=20, pady=(10, 20))
+        
+        generate_btn = ctk.CTkButton(button_frame, text="Generate Report",
+                                    fg_color="#10b981", hover_color="#059669",
+                                    font=("Arial", 14), height=40, width=150,
+                                    command=lambda: self.generate_sales_report())
+        generate_btn.pack(side="left", padx=(0, 10))
+        
+        # Report preview section
+        preview_frame = ctk.CTkFrame(report_frame, fg_color="#f8fafc", corner_radius=10,
+                                border_width=1, border_color="#e5e7eb")
+        preview_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        preview_header = ctk.CTkFrame(preview_frame, fg_color="transparent")
+        preview_header.pack(fill="x", padx=20, pady=(15, 5))
+        
+        preview_label = ctk.CTkLabel(preview_header, text="Report Preview",
+                                    font=("Arial", 18, "bold"), text_color="#2563eb")
+        preview_label.pack(side="left")
+        
+        # Download button (disabled until report is generated)
+        self.sales_download_btn = ctk.CTkButton(preview_header, text="Download Report",
+                                        fg_color="#3b82f6", hover_color="#2563eb",
+                                        font=("Arial", 14), height=35, width=150,
+                                        state="disabled", command=lambda: self.download_sales_report())
+        self.sales_download_btn.pack(side="right")
+        
+        # Preview text area
+        self.sales_preview = ctk.CTkTextbox(preview_frame, fg_color="white", corner_radius=5,
+                                    width=800, height=300)
+        self.sales_preview.pack(fill="both", expand=True, padx=20, pady=(5, 20))
+        self.sales_preview.insert("1.0", "Report preview will appear here. Generate a report to see data.")
+        
+        # Store report data for download
+        self.sales_report_data = None
+
+    def setup_inventory_report_tab(self, parent_frame):
+        # Main container
+        report_frame = ctk.CTkFrame(parent_frame, fg_color="white", corner_radius=10)
+        report_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Options Section
+        options_frame = ctk.CTkFrame(report_frame, fg_color="white", corner_radius=10,
+                                border_width=1, border_color="#e5e7eb")
+        options_frame.pack(fill="x", padx=20, pady=10)
+        
+        options_label = ctk.CTkLabel(options_frame, text="Report Options",
+                                    font=("Arial", 18, "bold"), text_color="#2563eb")
+        options_label.pack(anchor="w", padx=20, pady=(15, 10))
+        
+        # Report Type
+        type_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        type_frame.pack(fill="x", padx=20, pady=10)
+        
+        type_label = ctk.CTkLabel(type_frame, text="Report Type:", font=("Arial", 14), text_color="gray")
+        type_label.pack(side="left", padx=(0, 10))
+        
+        self.inventory_type_var = ctk.StringVar(value="all_products")
+        
+        all_radio = ctk.CTkRadioButton(type_frame, text="All Products", 
+                                    variable=self.inventory_type_var, value="all_products")
+        all_radio.pack(side="left", padx=(0, 15))
+        
+        low_stock_radio = ctk.CTkRadioButton(type_frame, text="Low Stock Items", 
+                                        variable=self.inventory_type_var, value="low_stock")
+        low_stock_radio.pack(side="left", padx=(0, 15))
+        
+        out_of_stock_radio = ctk.CTkRadioButton(type_frame, text="Out of Stock", 
+                                            variable=self.inventory_type_var, value="out_of_stock")
+        out_of_stock_radio.pack(side="left")
+        
+        # Sort By
+        sort_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        sort_frame.pack(fill="x", padx=20, pady=10)
+        
+        sort_label = ctk.CTkLabel(sort_frame, text="Sort By:", font=("Arial", 14), text_color="gray")
+        sort_label.pack(side="left", padx=(0, 10))
+        
+        self.inventory_sort_var = ctk.StringVar(value="name")
+        
+        name_radio = ctk.CTkRadioButton(sort_frame, text="Name", 
+                                    variable=self.inventory_sort_var, value="name")
+        name_radio.pack(side="left", padx=(0, 15))
+        
+        price_radio = ctk.CTkRadioButton(sort_frame, text="Price", 
+                                    variable=self.inventory_sort_var, value="price")
+        price_radio.pack(side="left", padx=(0, 15))
+        
+        stock_radio = ctk.CTkRadioButton(sort_frame, text="Stock Level", 
+                                    variable=self.inventory_sort_var, value="stock")
+        stock_radio.pack(side="left")
+        
+        # Report Format
+        format_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        format_frame.pack(fill="x", padx=20, pady=10)
+        
+        format_label = ctk.CTkLabel(format_frame, text="Format:", font=("Arial", 14), text_color="gray")
+        format_label.pack(side="left", padx=(0, 10))
+        
+        self.inventory_format_var = ctk.StringVar(value="csv")
+        
+        csv_radio = ctk.CTkRadioButton(format_frame, text="CSV", variable=self.inventory_format_var, value="csv")
+        csv_radio.pack(side="left", padx=(0, 15))
+        
+        txt_radio = ctk.CTkRadioButton(format_frame, text="Text", variable=self.inventory_format_var, value="txt")
+        txt_radio.pack(side="left")
+        
+        # Generate Report Button
+        button_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        button_frame.pack(fill="x", padx=20, pady=(10, 20))
+        
+        generate_btn = ctk.CTkButton(button_frame, text="Generate Report",
+                                    fg_color="#10b981", hover_color="#059669",
+                                    font=("Arial", 14), height=40, width=150,
+                                    command=lambda: self.generate_inventory_report())
+        generate_btn.pack(side="left", padx=(0, 10))
+        
+        # Report preview section
+        preview_frame = ctk.CTkFrame(report_frame, fg_color="#f8fafc", corner_radius=10,
+                                border_width=1, border_color="#e5e7eb")
+        preview_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        preview_header = ctk.CTkFrame(preview_frame, fg_color="transparent")
+        preview_header.pack(fill="x", padx=20, pady=(15, 5))
+        
+        preview_label = ctk.CTkLabel(preview_header, text="Report Preview",
+                                    font=("Arial", 18, "bold"), text_color="#2563eb")
+        preview_label.pack(side="left")
+        
+        # Download button (disabled until report is generated)
+        self.inventory_download_btn = ctk.CTkButton(preview_header, text="Download Report",
+                                            fg_color="#3b82f6", hover_color="#2563eb",
+                                            font=("Arial", 14), height=35, width=150,
+                                            state="disabled", command=lambda: self.download_inventory_report())
+        self.inventory_download_btn.pack(side="right")
+        
+        # Preview text area
+        self.inventory_preview = ctk.CTkTextbox(preview_frame, fg_color="white", corner_radius=5,
+                                        width=800, height=300)
+        self.inventory_preview.pack(fill="both", expand=True, padx=20, pady=(5, 20))
+        self.inventory_preview.insert("1.0", "Report preview will appear here. Generate a report to see data.")
+        
+        # Store report data for download
+        self.inventory_report_data = None
+
+    def setup_user_activity_tab(self, parent_frame):
+        # Main container
+        report_frame = ctk.CTkFrame(parent_frame, fg_color="white", corner_radius=10)
+        report_frame.pack(fill="both", expand=True, padx=20, pady=20)
+        
+        # Options Section
+        options_frame = ctk.CTkFrame(report_frame, fg_color="white", corner_radius=10,
+                                border_width=1, border_color="#e5e7eb")
+        options_frame.pack(fill="x", padx=20, pady=10)
+        
+        options_label = ctk.CTkLabel(options_frame, text="Report Options",
+                                    font=("Arial", 18, "bold"), text_color="#2563eb")
+        options_label.pack(anchor="w", padx=20, pady=(15, 10))
+        
+        # Report Type
+        type_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        type_frame.pack(fill="x", padx=20, pady=10)
+        
+        type_label = ctk.CTkLabel(type_frame, text="Report Type:", font=("Arial", 14), text_color="gray")
+        type_label.pack(side="left", padx=(0, 10))
+        
+        self.user_type_var = ctk.StringVar(value="all_users")
+        
+        all_radio = ctk.CTkRadioButton(type_frame, text="All Users", 
+                                    variable=self.user_type_var, value="all_users")
+        all_radio.pack(side="left", padx=(0, 15))
+        
+        admin_radio = ctk.CTkRadioButton(type_frame, text="Admins Only", 
+                                    variable=self.user_type_var, value="admins")
+        admin_radio.pack(side="left", padx=(0, 15))
+        
+        customer_radio = ctk.CTkRadioButton(type_frame, text="Customers Only", 
+                                        variable=self.user_type_var, value="customers")
+        customer_radio.pack(side="left")
+        
+        # Activity Filter
+        filter_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        filter_frame.pack(fill="x", padx=20, pady=10)
+        
+        filter_label = ctk.CTkLabel(filter_frame, text="Activity:", font=("Arial", 14), text_color="gray")
+        filter_label.pack(side="left", padx=(0, 10))
+        
+        self.user_activity_var = ctk.StringVar(value="all_activity")
+        
+        all_activity_radio = ctk.CTkRadioButton(filter_frame, text="All Activity", 
+                                            variable=self.user_activity_var, value="all_activity")
+        all_activity_radio.pack(side="left", padx=(0, 15))
+        
+        orders_radio = ctk.CTkRadioButton(filter_frame, text="Orders Only", 
+                                        variable=self.user_activity_var, value="orders")
+        orders_radio.pack(side="left", padx=(0, 15))
+        
+        # Time Period
+        period_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        period_frame.pack(fill="x", padx=20, pady=10)
+        
+        period_label = ctk.CTkLabel(period_frame, text="Time Period:", font=("Arial", 14), text_color="gray")
+        period_label.pack(side="left", padx=(0, 10))
+        
+        self.user_period_var = ctk.StringVar(value="last_30_days")
+        
+        last_7_radio = ctk.CTkRadioButton(period_frame, text="Last 7 Days", 
+                                        variable=self.user_period_var, value="last_7_days")
+        last_7_radio.pack(side="left", padx=(0, 15))
+        
+        last_30_radio = ctk.CTkRadioButton(period_frame, text="Last 30 Days", 
+                                        variable=self.user_period_var, value="last_30_days")
+        last_30_radio.pack(side="left", padx=(0, 15))
+        
+        all_time_radio = ctk.CTkRadioButton(period_frame, text="All Time", 
+                                        variable=self.user_period_var, value="all_time")
+        all_time_radio.pack(side="left")
+        
+        # Report Format
+        format_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        format_frame.pack(fill="x", padx=20, pady=10)
+        
+        format_label = ctk.CTkLabel(format_frame, text="Format:", font=("Arial", 14), text_color="gray")
+        format_label.pack(side="left", padx=(0, 10))
+        
+        self.user_format_var = ctk.StringVar(value="csv")
+        
+        csv_radio = ctk.CTkRadioButton(format_frame, text="CSV", variable=self.user_format_var, value="csv")
+        csv_radio.pack(side="left", padx=(0, 15))
+        
+        txt_radio = ctk.CTkRadioButton(format_frame, text="Text", variable=self.user_format_var, value="txt")
+        txt_radio.pack(side="left")
+        
+        # Generate Report Button
+        button_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        button_frame.pack(fill="x", padx=20, pady=(10, 20))
+        
+        generate_btn = ctk.CTkButton(button_frame, text="Generate Report",
+                                    fg_color="#10b981", hover_color="#059669",
+                                    font=("Arial", 14), height=40, width=150,
+                                    command=lambda: self.generate_user_report())
+        generate_btn.pack(side="left", padx=(0, 10))
+        
+        # Report preview section
+        preview_frame = ctk.CTkFrame(report_frame, fg_color="#f8fafc", corner_radius=10,
+                                border_width=1, border_color="#e5e7eb")
+        preview_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        
+        preview_header = ctk.CTkFrame(preview_frame, fg_color="transparent")
+        preview_header.pack(fill="x", padx=20, pady=(15, 5))
+        
+        preview_label = ctk.CTkLabel(preview_header, text="Report Preview",
+                                    font=("Arial", 18, "bold"), text_color="#2563eb")
+        preview_label.pack(side="left")
+        
+        # Download button (disabled until report is generated)
+        self.user_download_btn = ctk.CTkButton(preview_header, text="Download Report",
+                                        fg_color="#3b82f6", hover_color="#2563eb",
+                                        font=("Arial", 14), height=35, width=150,
+                                        state="disabled", command=lambda: self.download_user_report())
+        self.user_download_btn.pack(side="right")
+        
+        # Preview text area
+        self.user_preview = ctk.CTkTextbox(preview_frame, fg_color="white", corner_radius=5,
+                                    width=800, height=300)
+        self.user_preview.pack(fill="both", expand=True, padx=20, pady=(5, 20))
+        self.user_preview.insert("1.0", "Report preview will appear here. Generate a report to see data.")
+        
+        # Store report data for download
+        self.user_report_data = None
+
+    def toggle_custom_date_range(self):
+        """Show or hide custom date range based on selection"""
+        if self.sales_period_var.get() == "custom_range":
+            self.custom_date_frame.pack(fill="x", padx=20, pady=(0, 10))
+        else:
+            self.custom_date_frame.pack_forget()
+
+    def generate_sales_report(self):
+        """Generate sales report based on selected options"""
+        period = self.sales_period_var.get()
+        report_format = self.sales_format_var.get()
+        
+        # Define date range based on selected period
+        today = datetime.datetime.now()
+        from_date = None
+        to_date = today
+        
+        if period == "last_7_days":
+            from_date = today - datetime.timedelta(days=7)
+        elif period == "last_30_days":
+            from_date = today - datetime.timedelta(days=30)
+        elif period == "last_90_days":
+            from_date = today - datetime.timedelta(days=90)
+        elif period == "this_year":
+            from_date = datetime.datetime(today.year, 1, 1)
+        elif period == "custom_range":
+            try:
+                from_date = datetime.datetime.strptime(self.sales_from_date.get(), "%Y-%m-%d")
+                to_date = datetime.datetime.strptime(self.sales_to_date.get(), "%Y-%m-%d")
+                
+                if from_date > to_date:
+                    messagebox.showwarning("Invalid Date Range", "From date must be before to date.")
+                    return
+            except ValueError:
+                messagebox.showwarning("Invalid Date Format", "Please use YYYY-MM-DD format for dates.")
+                return
+        
+        # Fetch sales data for the period
+        sales_data = self.fetch_sales_data(from_date, to_date)
+        
+        if not sales_data:
+            self.sales_preview.delete("1.0", "end")
+            self.sales_preview.insert("1.0", "No sales data found for the selected period.")
+            self.sales_download_btn.configure(state="disabled")
+            return
+        
+        # Format data for preview and download
+        self.sales_report_data = self.format_sales_data(sales_data, report_format)
+        
+        # Show preview
+        self.sales_preview.delete("1.0", "end")
+        self.sales_preview.insert("1.0", self.sales_report_data)
+        
+        # Enable download button
+        self.sales_download_btn.configure(state="normal")
+
+    def fetch_sales_data(self, from_date, to_date):
+        """Fetch sales data from database for given period"""
+        try:
+            connection = connect_db()
+            cursor = connection.cursor(dictionary=True)
+            
+            # Format dates for SQL query
+            from_date_str = from_date.strftime("%Y-%m-%d %H:%M:%S") if from_date else None
+            to_date_str = to_date.strftime("%Y-%m-%d %H:%M:%S") if to_date else None
+            
+            # Query to get orders in date range
+            if from_date and to_date:
+                cursor.execute("""
+                    SELECT o.order_id, u.username, u.first_name, u.last_name, 
+                        o.order_date, o.total_amount, o.status
+                    FROM Orders o
+                    JOIN Users u ON o.user_id = u.user_id
+                    WHERE o.order_date BETWEEN %s AND %s
+                    ORDER BY o.order_date DESC
+                """, (from_date_str, to_date_str))
+            elif from_date:
+                cursor.execute("""
+                    SELECT o.order_id, u.username, u.first_name, u.last_name, 
+                        o.order_date, o.total_amount, o.status
+                    FROM Orders o
+                    JOIN Users u ON o.user_id = u.user_id
+                    WHERE o.order_date >= %s
+                    ORDER BY o.order_date DESC
+                """, (from_date_str,))
+            else:
+                cursor.execute("""
+                    SELECT o.order_id, u.username, u.first_name, u.last_name, 
+                        o.order_date, o.total_amount, o.status
+                    FROM Orders o
+                    JOIN Users u ON o.user_id = u.user_id
+                    ORDER BY o.order_date DESC
+                """)
+            
+            orders = cursor.fetchall()
+            
+            # If we have orders, fetch details for each order
+            if orders:
+                for order in orders:
+                    # Get items in this order
+                    cursor.execute("""
+                        SELECT p.name, ci.quantity, p.price
+                        FROM CartItems ci
+                        JOIN Products p ON ci.product_id = p.product_id
+                        WHERE ci.cart_id = (
+                            SELECT cart_id FROM Orders WHERE order_id = %s
+                        )
+                    """, (order['order_id'],))
+                    
+                    order['items'] = cursor.fetchall()
+            
+            return orders
+            
+        except Exception as err:
+            messagebox.showerror("Database Error", str(err))
+            return []
+        finally:
+            if connection and connection.is_connected():
+                cursor.close()
+                connection.close()
+
+    def format_sales_data(self, sales_data, format_type):
+        """Format sales data for display and download"""
+        if format_type == "csv":
+            # CSV format
+            header = "Order ID,Date,Customer,Status,Total Amount\n"
+            rows = []
+            
+            for order in sales_data:
+                date = order['order_date'].strftime("%Y-%m-%d %H:%M")
+                customer = f"{order['first_name']} {order['last_name']}"
+                status = order['status']
+                total = f"${float(order['total_amount']):.2f}"
+                
+                row = f"{order['order_id']},{date},{customer},{status},{total}"
+                rows.append(row)
+            
+            return header + "\n".join(rows)
+        else:
+            # Text format (more detailed)
+            report = "SALES REPORT\n"
+            report += "=" * 50 + "\n\n"
+            
+            # Summary
+            total_sales = sum(float(order['total_amount']) for order in sales_data)
+            report += f"Total Orders: {len(sales_data)}\n"
+            report += f"Total Revenue: ${total_sales:.2f}\n\n"
+            report += "=" * 50 + "\n\n"
+            
+            # Detailed orders
+            for order in sales_data:
+                date = order['order_date'].strftime("%Y-%m-%d %H:%M")
+                customer = f"{order['first_name']} {order['last_name']}"
+                status = order['status']
+                total = f"${float(order['total_amount']):.2f}"
+                
+                report += f"ORDER #{order['order_id']} - {date}\n"
+                report += f"Customer: {customer}\n"
+                report += f"Status: {status}\n"
+                report += f"Total: {total}\n"
+                
+                # Add item details if available
+                if 'items' in order and order['items']:
+                    report += "\nItems:\n"
+                    for item in order['items']:
+                        item_total = float(item['price']) * item['quantity']
+                        report += f"  - {item['name']} x {item['quantity']} (${float(item['price']):.2f} each) = ${item_total:.2f}\n"
+                
+                report += "\n" + "-" * 50 + "\n\n"
+            
+            return report
+
+    def download_sales_report(self):
+        """Download sales report to file"""
+        if not self.sales_report_data:
+            messagebox.showwarning("No Data", "Please generate a report first.")
+            return
+        
+        # Determine file extension
+        ext = "csv" if self.sales_format_var.get() == "csv" else "txt"
+        
+        # Get save location from user
+        filename = filedialog.asksaveasfilename(
+            defaultextension=f".{ext}",
+            filetypes=[
+                (f"{ext.upper()} files", f"*.{ext}"),
+                ("All files", "*.*")
+            ],
+            title="Save Sales Report"
+        )
+        
+        if not filename:
+            return  # User cancelled
+        
+        # Save the file
+        try:
+            with open(filename, 'w', newline='') as file:
+                file.write(self.sales_report_data)
+            
+            messagebox.showinfo("Success", f"Report saved to {filename}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save file: {str(e)}")
+            
+    def generate_inventory_report(self):
+        """Generate inventory report based on selected options"""
+        report_type = self.inventory_type_var.get()
+        sort_by = self.inventory_sort_var.get()
+        report_format = self.inventory_format_var.get()
+        
+        # Fetch inventory data
+        inventory_data = self.fetch_inventory_data(report_type, sort_by)
+        
+        if not inventory_data:
+            self.inventory_preview.delete("1.0", "end")
+            self.inventory_preview.insert("1.0", "No inventory data found.")
+            self.inventory_download_btn.configure(state="disabled")
+            return
+        
+        # Format data for preview and download
+        self.inventory_report_data = self.format_inventory_data(inventory_data, report_format)
+        
+        # Show preview
+        self.inventory_preview.delete("1.0", "end")
+        self.inventory_preview.insert("1.0", self.inventory_report_data)
+        
+        # Enable download button
+        self.inventory_download_btn.configure(state="normal")
+
+    def fetch_inventory_data(self, report_type, sort_by):
+        """Fetch inventory data from database"""
+        try:
+            connection = connect_db()
+            cursor = connection.cursor(dictionary=True)
+            
+            # Prepare SQL based on report type and sort order
+            query = "SELECT product_id, name, price, stock FROM Products"
+            
+            # Filter by report type
+            if report_type == "low_stock":
+                query += " WHERE stock <= 10 AND stock > 0"
+            elif report_type == "out_of_stock":
+                query += " WHERE stock = 0"
+            
+            # Add sort order
+            if sort_by == "name":
+                query += " ORDER BY name"
+            elif sort_by == "price":
+                query += " ORDER BY price DESC"
+            elif sort_by == "stock":
+                query += " ORDER BY stock"
+            
+            cursor.execute(query)
+            products = cursor.fetchall()
+            
+            return products
+            
+        except Exception as err:
+            messagebox.showerror("Database Error", str(err))
+            return []
+        finally:
+            if connection and connection.is_connected():
+                cursor.close()
+                connection.close()
+
+    def format_inventory_data(self, inventory_data, format_type):
+        """Format inventory data for display and download"""
+        if format_type == "csv":
+            # CSV format
+            header = "Product ID,Name,Price,Stock,Value\n"
+            rows = []
+            
+            for product in inventory_data:
+                price = float(product['price'])
+                stock = product['stock']
+                value = price * stock
+                row = f"{product['product_id']},{product['name']},${price:.2f},{stock},${value:.2f}"
+                rows.append(row)
+            
+            return header + "\n".join(rows)
+        else:
+            # Text format (more detailed)
+            report = "INVENTORY REPORT\n"
+            report += "=" * 50 + "\n\n"
+            
+            # Summary
+            total_products = len(inventory_data)
+            total_value = sum(float(product['price']) * product['stock'] for product in inventory_data)
+            out_of_stock = sum(1 for product in inventory_data if product['stock'] == 0)
+            low_stock = sum(1 for product in inventory_data if 0 < product['stock'] <= 10)
+            
+            report += f"Total Products: {total_products}\n"
+            report += f"Total Inventory Value: ${total_value:.2f}\n"
+            report += f"Out of Stock Items: {out_of_stock}\n"
+            report += f"Low Stock Items: {low_stock}\n\n"
+            report += "=" * 50 + "\n\n"
+            
+            # Product details
+            report += "PRODUCT DETAILS:\n\n"
+            
+            for product in inventory_data:
+                price = float(product['price'])
+                stock = product['stock']
+                value = price * stock
+                
+                report += f"Product ID: {product['product_id']}\n"
+                report += f"Name: {product['name']}\n"
+                report += f"Price: ${price:.2f}\n"
+                report += f"Stock: {stock}\n"
+                report += f"Total Value: ${value:.2f}\n"
+                
+                # Add stock status indicator
+                if stock == 0:
+                    report += "Status: OUT OF STOCK\n"
+                elif stock <= 10:
+                    report += "Status: LOW STOCK\n"
+                else:
+                    report += "Status: In Stock\n"
+                
+                report += "\n" + "-" * 50 + "\n\n"
+            
+            return report
+
+    def download_inventory_report(self):
+        """Download inventory report to file"""
+        if not self.inventory_report_data:
+            messagebox.showwarning("No Data", "Please generate a report first.")
+            return
+        
+        # Determine file extension
+        ext = "csv" if self.inventory_format_var.get() == "csv" else "txt"
+        
+        # Get save location from user
+        filename = filedialog.asksaveasfilename(
+            defaultextension=f".{ext}",
+            filetypes=[
+                (f"{ext.upper()} files", f"*.{ext}"),
+                ("All files", "*.*")
+            ],
+            title="Save Inventory Report"
+        )
+        
+        if not filename:
+            return  # User cancelled
+        
+        # Save the file
+        try:
+            with open(filename, 'w', newline='') as file:
+                file.write(self.inventory_report_data)
+            
+            messagebox.showinfo("Success", f"Report saved to {filename}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save file: {str(e)}")
+
+    def generate_user_report(self):
+        """Generate user activity report based on selected options"""
+        user_type = self.user_type_var.get()
+        activity_type = self.user_activity_var.get()
+        period = self.user_period_var.get()
+        report_format = self.user_format_var.get()
+        
+        # Define date range based on selected period
+        today = datetime.datetime.now()
+        from_date = None
+        
+        if period == "last_7_days":
+            from_date = today - datetime.timedelta(days=7)
+        elif period == "last_30_days":
+            from_date = today - datetime.timedelta(days=30)
+        
+        # Fetch user data
+        user_data = self.fetch_user_data(user_type, activity_type, from_date)
+        
+        if not user_data:
+            self.user_preview.delete("1.0", "end")
+            self.user_preview.insert("1.0", "No user data found for the selected criteria.")
+            self.user_download_btn.configure(state="disabled")
+            return
+        
+        # Format data for preview and download
+        self.user_report_data = self.format_user_data(user_data, report_format)
+        
+        # Show preview
+        self.user_preview.delete("1.0", "end")
+        self.user_preview.insert("1.0", self.user_report_data)
+        
+        # Enable download button
+        self.user_download_btn.configure(state="normal")
+
+    def fetch_user_data(self, user_type, activity_type, from_date):
+        """Fetch user data from database based on criteria"""
+        try:
+            connection = connect_db()
+            cursor = connection.cursor(dictionary=True)
+            
+            # Base query for users
+            user_query = """
+                SELECT user_id, first_name, last_name, username, email, role, created_at
+                FROM Users
+            """
+            
+            # Apply user type filter
+            if user_type == "admins":
+                user_query += " WHERE role = 'admin'"
+            elif user_type == "customers":
+                user_query += " WHERE role = 'user'"
+            
+            user_query += " ORDER BY created_at DESC"
+            
+            # Execute user query
+            cursor.execute(user_query)
+            users = cursor.fetchall()
+            
+            # If requested activity includes orders, get order data
+            if activity_type in ["all_activity", "orders"] and users:
+                for user in users:
+                    # Query to get user's orders
+                    order_query = """
+                        SELECT order_id, order_date, total_amount, status
+                        FROM Orders
+                        WHERE user_id = %s
+                    """
+                    
+                    # Add date filter if needed
+                    if from_date:
+                        order_query += " AND order_date >= %s"
+                        cursor.execute(order_query, (user["user_id"], from_date))
+                    else:
+                        cursor.execute(order_query, (user["user_id"],))
+                    
+                    user["orders"] = cursor.fetchall()
+                    
+                    # Count total orders (including those outside the date range)
+                    cursor.execute(
+                        "SELECT COUNT(*) as total_orders FROM Orders WHERE user_id = %s",
+                        (user["user_id"],)
+                    )
+                    total_orders = cursor.fetchone()
+                    user["total_orders"] = total_orders["total_orders"] if total_orders else 0
+            
+            return users
+            
+        except Exception as err:
+            messagebox.showerror("Database Error", str(err))
+            return []
+        finally:
+            if connection and connection.is_connected():
+                cursor.close()
+                connection.close()
+
+    def format_user_data(self, user_data, format_type):
+        """Format user data for display and download"""
+        if format_type == "csv":
+            # CSV format
+            header = "User ID,Name,Email,Role,Created Date,Orders Count,Total Spent\n"
+            rows = []
+            
+            for user in user_data:
+                name = f"{user['first_name']} {user['last_name']}"
+                email = user.get("email", user["username"])
+                if not email and user.get("username"):
+                    email = user["username"]
+                role = user["role"]
+                created = user["created_at"].strftime("%Y-%m-%d") if user["created_at"] else "N/A"
+                
+                # Calculate orders stats
+                orders_count = len(user.get("orders", []))
+                total_spent = sum(float(order["total_amount"]) for order in user.get("orders", []))
+                
+                row = f"{user['user_id']},{name},{email},{role},{created},{orders_count},${total_spent:.2f}"
+                rows.append(row)
+            
+            return header + "\n".join(rows)
+        else:
+            # Text format (more detailed)
+            report = "USER ACTIVITY REPORT\n"
+            report += "=" * 50 + "\n\n"
+            
+            # Summary
+            total_users = len(user_data)
+            admin_count = sum(1 for user in user_data if user["role"] == "admin")
+            customer_count = sum(1 for user in user_data if user["role"] == "user")
+            
+            report += f"Total Users: {total_users}\n"
+            report += f"Administrators: {admin_count}\n"
+            report += f"Regular Users: {customer_count}\n\n"
+            report += "=" * 50 + "\n\n"
+            
+            # User details
+            for user in user_data:
+                report += f"USER: {user['first_name']} {user['last_name']}\n"
+                report += f"ID: {user['user_id']}\n"
+                
+                email = user.get("email", user["username"])
+                if not email and user.get("username"):
+                    email = user["username"]
+                report += f"Email: {email}\n"
+                
+                report += f"Role: {user['role']}\n"
+                report += f"Created: {user['created_at'].strftime('%Y-%m-%d') if user['created_at'] else 'N/A'}\n"
+                
+                # Order information if available
+                if "orders" in user and user["orders"]:
+                    orders_count = len(user["orders"])
+                    total_spent = sum(float(order["total_amount"]) for order in user["orders"])
+                    
+                    report += f"Orders in Period: {orders_count}\n"
+                    report += f"Total Spent in Period: ${total_spent:.2f}\n"
+                    
+                    if "total_orders" in user:
+                        report += f"Total Orders (All Time): {user['total_orders']}\n\n"
+                    
+                    report += "Recent Orders:\n"
+                    for order in sorted(user["orders"], key=lambda x: x["order_date"], reverse=True)[:5]:  # Show up to 5 most recent orders
+                        date = order["order_date"].strftime("%Y-%m-%d %H:%M")
+                        amount = float(order["total_amount"])
+                        status = order["status"]
+                        
+                        report += f"  - Order #{order['order_id']} ({date}): ${amount:.2f} - {status}\n"
+                else:
+                    report += "No orders found in selected period.\n"
+                
+                report += "\n" + "-" * 50 + "\n\n"
+            
+            return report
+
+    def download_user_report(self):
+        """Download user report to file"""
+        if not self.user_report_data:
+            messagebox.showwarning("No Data", "Please generate a report first.")
+            return
+        
+        # Determine file extension
+        ext = "csv" if self.user_format_var.get() == "csv" else "txt"
+        
+        # Get save location from user
+        filename = filedialog.asksaveasfilename(
+            defaultextension=f".{ext}",
+            filetypes=[
+                (f"{ext.upper()} files", f"*.{ext}"),
+                ("All files", "*.*")
+            ],
+            title="Save User Activity Report"
+        )
+        
+        if not filename:
+            return  # User cancelled
+        
+        # Save the file
+        try:
+            with open(filename, 'w', newline='') as file:
+                file.write(self.user_report_data)
+            
+            messagebox.showinfo("Success", f"Report saved to {filename}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save file: {str(e)}")
+    
 if __name__ == "__main__":
     ctk.set_appearance_mode("light")
     ctk.set_default_color_theme("blue")
