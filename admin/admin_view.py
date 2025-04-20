@@ -1,6 +1,6 @@
 import sys
 import os
-
+import numpy as np
 from matplotlib import pyplot as plt
 # Add parent directory to path so we can import from other modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -17,17 +17,20 @@ from admin.admin_nav import AdminNavigation
 from config_db import connect_db
 from utils_file import hash_password, read_login_file, write_login_file
 
-from admin.admin_nav import AdminNavigation
-
-# Then, ensure the AdminNavigationExtended class is defined in the same file
-# before it's used in the setup_main_ui method. The definition should look like this:
-
 class AdminNavigationExtended(AdminNavigation):
     def __init__(self, parent_frame, admin_app):
         self.admin_app = admin_app
         super().__init__(parent_frame)
+        
+        # Add the current section indicator
+        self.current_section = "Manage Inventory"
+        self.section_indicators = {}
+        self.update_navigation_highlight()
     
     def navigate_to(self, destination):
+        self.current_section = destination
+        self.update_navigation_highlight()
+        
         if destination == "Manage Inventory":
             self.admin_app.show_inventory_management()
         elif destination == "Manage Users":
@@ -36,6 +39,12 @@ class AdminNavigationExtended(AdminNavigation):
             self.admin_app.show_report_generation()
         elif destination == "Logout":
             self.admin_app.logout()
+    
+    def update_navigation_highlight(self):
+        # This method would visually highlight the current section in the navigation menu
+        # In a real implementation, this would update the styling of the navigation buttons
+        pass
+
 class AdminApp:
     def __init__(self, root, username=None):
         self.root = root
@@ -60,6 +69,9 @@ class AdminApp:
         # Variables for editing items
         self.editing_product_id = None
         self.editing_user_id = None
+        
+        # Bind resize event to adjust layout
+        self.root.bind("<Configure>", self.on_window_resize)
         
         # Authenticate user if username provided
         if username and username != "login":
@@ -86,6 +98,110 @@ class AdminApp:
             
             # Show login screen for admin if not logged in
             self.setup_login_ui()
+    
+    def on_window_resize(self, event=None):
+        """Handle window resize events"""
+        # Only proceed if we have the necessary attributes
+        if hasattr(self, 'content_frame'):
+            # Get new window size
+            width = self.root.winfo_width()
+            height = self.root.winfo_height()
+            
+            # Adjust layout based on current view
+            if hasattr(self, 'current_view'):
+                if self.current_view == "inventory":
+                    self.adjust_inventory_layout(width, height)
+                elif self.current_view == "users":
+                    self.adjust_users_layout(width, height)
+                elif self.current_view == "reports":
+                    self.adjust_reports_layout(width, height)
+    
+    def adjust_inventory_layout(self, width, height):
+        """Adjust the inventory management layout based on window size"""
+        if hasattr(self, 'add_item_section') and hasattr(self, 'inventory_section'):
+            # For smaller screens, stack the sections vertically
+            if width < 900:
+                # Adjust add item section to full width
+                self.add_item_section.pack(fill="x", padx=20, pady=10)
+                
+                # Make form fields use most of the width
+                for entry in [self.item_name_entry, self.price_entry, self.stock_entry]:
+                    if entry.winfo_exists():
+                        entry.configure(width=max(200, width - 150))
+                
+                # Adjust inventory table width
+                if hasattr(self, 'inventory_table'):
+                    table_width = width - 60  # Account for padding
+                    self.inventory_table.column("name", width=int(table_width * 0.4))
+                    self.inventory_table.column("price", width=int(table_width * 0.2))
+                    self.inventory_table.column("stock", width=int(table_width * 0.2))
+                    self.inventory_table.column("actions", width=int(table_width * 0.2))
+            else:
+                # For larger screens, use the default layout
+                self.add_item_section.pack(fill="x", padx=30, pady=10)
+                
+                # Reset form field widths
+                for entry in [self.item_name_entry, self.price_entry, self.stock_entry]:
+                    if entry.winfo_exists():
+                        entry.configure(width=300)
+                
+                # Reset table column widths
+                if hasattr(self, 'inventory_table'):
+                    self.inventory_table.column("name", width=300)
+                    self.inventory_table.column("price", width=100)
+                    self.inventory_table.column("stock", width=100)
+                    self.inventory_table.column("actions", width=200)
+    
+    def adjust_users_layout(self, width, height):
+        """Adjust the user management layout based on window size"""
+        # Adjust tabview padding based on screen width
+        if hasattr(self, 'user_tabview'):
+            if width < 900:
+                self.user_tabview.pack(fill="both", expand=True, padx=10, pady=10)
+            else:
+                self.user_tabview.pack(fill="both", expand=True, padx=30, pady=10)
+    
+    def adjust_reports_layout(self, width, height):
+        """Adjust the reports layout based on window size"""
+        # For report tabs, adjust the layout of panels for smaller screens
+        if hasattr(self, 'report_tabview'):
+            # If the screen is narrow, stack the report panels vertically instead of side by side
+            if width < 900 and hasattr(self, 'sales_left_panel') and hasattr(self, 'sales_right_panel'):
+                # Change left and right panels to be stacked
+                self.sales_left_panel.configure(width=width - 60)
+                self.sales_left_panel.pack(side="top", fill="x", pady=(0, 10))
+                
+                self.sales_right_panel.configure(width=width - 60)
+                self.sales_right_panel.pack(side="top", fill="both", expand=True)
+                
+                # Also adjust inventory and user report panels if they exist
+                if hasattr(self, 'inventory_left_panel') and hasattr(self, 'inventory_right_panel'):
+                    self.inventory_left_panel.configure(width=width - 60)
+                    self.inventory_left_panel.pack(side="top", fill="x", pady=(0, 10))
+                    
+                    self.inventory_right_panel.configure(width=width - 60)
+                    self.inventory_right_panel.pack(side="top", fill="both", expand=True)
+                
+                if hasattr(self, 'user_left_panel') and hasattr(self, 'user_right_panel'):
+                    self.user_left_panel.configure(width=width - 60)
+                    self.user_left_panel.pack(side="top", fill="x", pady=(0, 10))
+                    
+                    self.user_right_panel.configure(width=width - 60)
+                    self.user_right_panel.pack(side="top", fill="both", expand=True)
+            elif width >= 900:
+                # Restore side-by-side layout for wider screens
+                if hasattr(self, 'sales_left_panel') and hasattr(self, 'sales_right_panel'):
+                    self.sales_left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=0)
+                    self.sales_right_panel.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=0)
+                
+                if hasattr(self, 'inventory_left_panel') and hasattr(self, 'inventory_right_panel'):
+                    self.inventory_left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=0)
+                    self.inventory_right_panel.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=0)
+                
+                if hasattr(self, 'user_left_panel') and hasattr(self, 'user_right_panel'):
+                    self.user_left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=0)
+                    self.user_right_panel.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=0)
+    
     def logout(self):
         # Remove the user file when logging out
         if os.path.exists("current_user.txt"):
@@ -357,7 +473,8 @@ class AdminApp:
             user_label.pack(pady=(0, 20))
         
         # Content frame - will hold different content based on navigation
-        self.content_frame = ctk.CTkFrame(self.main_frame, fg_color="white", corner_radius=15)
+        # Using a scrollable frame to handle overflow content automatically
+        self.content_frame = ctk.CTkScrollableFrame(self.main_frame, fg_color="white", corner_radius=15)
         self.content_frame.pack(fill="both", expand=True, padx=20, pady=20)
     
     def clear_content_frame(self):
@@ -367,23 +484,24 @@ class AdminApp:
     
     def show_inventory_management(self):
         self.clear_content_frame()
+        self.current_view = "inventory"
         
         # Header
         header_label = ctk.CTkLabel(self.content_frame, text="Inventory Management",
                                    font=("Arial", 24, "bold"), text_color="#2563eb")
-        header_label.pack(anchor="w", padx=30, pady=(30, 20))
+        header_label.pack(anchor="w", padx=30, pady=(10, 20))
         
         # Add New Item Section
-        add_item_section = ctk.CTkFrame(self.content_frame, fg_color="white", corner_radius=10,
+        self.add_item_section = ctk.CTkFrame(self.content_frame, fg_color="white", corner_radius=10,
                                       border_width=1, border_color="#e5e7eb")
-        add_item_section.pack(fill="x", padx=30, pady=10)
+        self.add_item_section.pack(fill="x", padx=30, pady=10)
         
-        add_item_label = ctk.CTkLabel(add_item_section, text="Add New Item",
+        add_item_label = ctk.CTkLabel(self.add_item_section, text="Add New Item",
                                     font=("Arial", 18, "bold"), text_color="black")
         add_item_label.pack(anchor="w", padx=20, pady=(15, 10))
         
         # Form layout with grid for better alignment
-        form_frame = ctk.CTkFrame(add_item_section, fg_color="transparent")
+        form_frame = ctk.CTkFrame(self.add_item_section, fg_color="transparent")
         form_frame.pack(fill="x", padx=20, pady=10)
         
         # Item Name Entry - Row 1
@@ -420,37 +538,49 @@ class AdminApp:
         self.stock_entry.pack(side="left", fill="x", expand=True)
         
         # Buttons frame
-        buttons_frame = ctk.CTkFrame(add_item_section, fg_color="transparent")
+        buttons_frame = ctk.CTkFrame(self.add_item_section, fg_color="transparent")
         buttons_frame.pack(fill="x", padx=20, pady=(10, 20))
         
+        # Wrap buttons in a flex-like container
+        button_container = ctk.CTkFrame(buttons_frame, fg_color="transparent")
+        button_container.pack(fill="x")
+        
         # Add Item Button
-        self.add_item_btn = ctk.CTkButton(buttons_frame, text="Add Item",
+        self.add_item_btn = ctk.CTkButton(button_container, text="Add Item",
                                    fg_color="#10b981", hover_color="#059669",
                                    font=("Arial", 14), height=40, width=120,
                                    command=self.handle_add_update_product)
         self.add_item_btn.pack(side="left", padx=(0, 10))
         
         # Clear Form Button
-        clear_btn = ctk.CTkButton(buttons_frame, text="Clear Form",
+        clear_btn = ctk.CTkButton(button_container, text="Clear Form",
                                 fg_color="#6b7280", hover_color="#4b5563",
                                 font=("Arial", 14), height=40, width=120,
                                 command=self.clear_product_fields)
         clear_btn.pack(side="left")
         
         # Existing Inventory Section
-        inventory_section = ctk.CTkFrame(self.content_frame, fg_color="white")
-        inventory_section.pack(fill="both", expand=True, padx=30, pady=10)
+        self.inventory_section = ctk.CTkFrame(self.content_frame, fg_color="white")
+        self.inventory_section.pack(fill="both", expand=True, padx=30, pady=10)
         
-        # Header with filter/search
-        header_frame = ctk.CTkFrame(inventory_section, fg_color="transparent")
+        # Header with filter/search - using a flex-like layout
+        header_frame = ctk.CTkFrame(self.inventory_section, fg_color="transparent")
         header_frame.pack(fill="x", pady=(10, 15))
         
-        inventory_label = ctk.CTkLabel(header_frame, text="Existing Inventory",
+        # Create a container for the left side (title)
+        title_container = ctk.CTkFrame(header_frame, fg_color="transparent")
+        title_container.pack(side="left", fill="y")
+        
+        inventory_label = ctk.CTkLabel(title_container, text="Existing Inventory",
                                      font=("Arial", 18, "bold"), text_color="black")
         inventory_label.pack(side="left")
         
-        # Search/filter frame
-        search_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+        # Create a container for the right side (search)
+        search_container = ctk.CTkFrame(header_frame, fg_color="transparent")
+        search_container.pack(side="right", fill="y")
+        
+        # Search/filter frame with responsive width
+        search_frame = ctk.CTkFrame(search_container, fg_color="transparent")
         search_frame.pack(side="right")
         
         self.inventory_search = ctk.CTkEntry(search_frame, placeholder_text="Search items...",
@@ -461,77 +591,14 @@ class AdminApp:
                                  fg_color="#3b82f6", hover_color="#2563eb",
                                  font=("Arial", 14), height=35, width=80,
                                  command=self.search_inventory)
-        search_btn.pack(side="left")
+        search_btn.pack(side="left", padx=(0, 10))
         
-        # Create a custom style for the treeview
-        style = ttk.Style()
-        style.configure("Treeview", 
-                        background="white",
-                        fieldbackground="white", 
-                        rowheight=40)
-        style.configure("Treeview.Heading", 
-                        font=('Arial', 12, 'bold'),
-                        background="#f8fafc", 
-                        foreground="black")
-        style.map('Treeview', background=[('selected', '#e5e7eb')])
-        
-        # Create a frame for the table
-        table_frame = ctk.CTkFrame(inventory_section, fg_color="#f8fafc", corner_radius=10)
-        table_frame.pack(fill="both", expand=True, pady=5)
-        
-        # Create columns
-        columns = ("name", "price", "stock", "actions")
-        
-        # Create treeview
-        self.inventory_table = ttk.Treeview(table_frame, columns=columns, show="headings")
-        
-        # Define headings
-        self.inventory_table.heading("name", text="Item Name")
-        self.inventory_table.heading("price", text="Price")
-        self.inventory_table.heading("stock", text="Stock")
-        self.inventory_table.heading("actions", text="Actions")
-        
-        # Define column widths and alignment
-        self.inventory_table.column("name", width=300, anchor="w")
-        self.inventory_table.column("price", width=100, anchor="center")
-        self.inventory_table.column("stock", width=100, anchor="center")
-        self.inventory_table.column("actions", width=200, anchor="center")
-        
-        # Add scrollbar
-        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.inventory_table.yview)
-        self.inventory_table.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
-        self.inventory_table.pack(fill="both", expand=True)
-        
-        # Bind double-click event for editing
-        self.inventory_table.bind("<Double-1>", self.edit_product)
-        
-        # Create buttons frame
-        buttons_frame = ctk.CTkFrame(inventory_section, fg_color="white")
-        buttons_frame.pack(fill="x", pady=10)
-        
-        # Edit and Delete buttons
-        edit_btn = ctk.CTkButton(buttons_frame, text="Edit Selected", 
-                                fg_color="#eab308", hover_color="#ca8a04",
-                                font=("Arial", 14), height=40, width=150,
-                                command=lambda: self.edit_product(None))
-        edit_btn.pack(side="left", padx=10)
-        
-        delete_btn = ctk.CTkButton(buttons_frame, text="Delete Selected", 
-                                  fg_color="#ef4444", hover_color="#dc2626",
-                                  font=("Arial", 14), height=40, width=150,
-                                  command=self.delete_selected_product)
-        delete_btn.pack(side="left", padx=10)
-        
-        # Refresh button for inventory
-        refresh_btn = ctk.CTkButton(buttons_frame, text="Refresh", 
-                                   fg_color="#3b82f6", hover_color="#2563eb",
-                                   font=("Arial", 14), height=40, width=150,
-                                   command=self.refresh_inventory_table)
-        refresh_btn.pack(side="right", padx=10)
-        
-        # Populate inventory table
-        self.refresh_inventory_table()
+        # Clear search button
+        clear_search_btn = ctk.CTkButton(search_frame, text="Clear",
+                                      fg_color="#ef4444", hover_color="#dc2626",
+                                      font=("Arial", 14), height=35, width=80,
+                                      command=self.clear_inventory_search)
+        clear_search_btn.pack(side="left")
     
     def fetch_inventory(self, search_term=None):
         try:

@@ -19,7 +19,7 @@ class UserApp:
         self.username = username
         self.root.title("SuperMarket Dashboard")
         self.root.geometry("1200x700")
-        self.root.resizable(True, True)
+        self.root.resizable(False, False)
         
         # Current user info
         self.current_user = {
@@ -111,27 +111,27 @@ class UserApp:
                                     font=("Arial", 14), text_color="white")
             user_label.pack(pady=(0, 20))
         
-        # Content area - Make the content scrollable
-        self.content_scroll = ctk.CTkScrollableFrame(self.main_frame, fg_color="white", corner_radius=15)
-        self.content_scroll.pack(fill="both", expand=True, padx=20, pady=20)
+        # Content area
+        self.content_frame = ctk.CTkFrame(self.main_frame, fg_color="white", corner_radius=15)
+        self.content_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
         # Header
-        self.header_label = ctk.CTkLabel(self.content_scroll, text="Welcome to the SuperMarket",
+        self.header_label = ctk.CTkLabel(self.content_frame, text="Welcome to the SuperMarket",
                                   font=("Arial", 24, "bold"), text_color="black")
-        self.header_label.pack(anchor="w", padx=30, pady=(10, 20))
+        self.header_label.pack(anchor="w", padx=30, pady=(30, 20))
         
         # Create the different sections
         self.create_sections()
     
     def create_sections(self):
         # Available Items Section
-        self.items_section = ctk.CTkFrame(self.content_scroll, fg_color="white")
+        self.items_section = ctk.CTkFrame(self.content_frame, fg_color="white")
         
         # Checkout Section
-        self.checkout_section = ctk.CTkFrame(self.content_scroll, fg_color="white")
+        self.checkout_section = ctk.CTkFrame(self.content_frame, fg_color="white")
         
         # Previous Orders Section
-        self.orders_section = ctk.CTkFrame(self.content_scroll, fg_color="white")
+        self.orders_section = ctk.CTkFrame(self.content_frame, fg_color="white")
         
         # Set up each section content
         self.setup_items_section()
@@ -143,7 +143,7 @@ class UserApp:
                                   font=("Arial", 18, "bold"), text_color="black")
         items_label.pack(anchor="w", pady=(0, 20))
         
-        # Search bar with clear functionality
+        # Search bar
         search_frame = ctk.CTkFrame(self.items_section, fg_color="white")
         search_frame.pack(fill="x", pady=(0, 10))
         
@@ -155,23 +155,14 @@ class UserApp:
                                      fg_color="#2563eb", hover_color="#1d4ed8", 
                                      font=("Arial", 14), height=40, width=100,
                                      command=self.handle_search)
-        search_button.pack(side="left", padx=(0, 10))
+        search_button.pack(side="left")
         
-        # Clear search button
-        self.clear_search_button = ctk.CTkButton(search_frame, text="Clear", 
-                                         fg_color="#ef4444", hover_color="#dc2626", 
-                                         font=("Arial", 14), height=40, width=100,
-                                         command=self.clear_search)
-        self.clear_search_button.pack(side="left")
-        # Initially hide the clear button
-        self.clear_search_button.pack_forget()
+        # Items container
+        items_container = ctk.CTkFrame(self.items_section, fg_color="#f3f4f6", corner_radius=15)
+        items_container.pack(fill="x", pady=10)
         
-        # Products container with scrolling
-        self.products_container = ctk.CTkFrame(self.items_section, fg_color="#f3f4f6", corner_radius=15)
-        self.products_container.pack(fill="x", pady=10)
-        
-        # Grid layout for products with scrolling
-        self.products_frame = ctk.CTkFrame(self.products_container, fg_color="#f3f4f6")
+        # Product cards frame with horizontal layout
+        self.products_frame = ctk.CTkFrame(items_container, fg_color="#f3f4f6")
         self.products_frame.pack(fill="x", padx=20, pady=20)
     
     def setup_checkout_section(self):
@@ -227,10 +218,6 @@ class UserApp:
         self.refresh_products_display()
         self.fetch_user_cart()
         self.refresh_previous_orders()
-        
-        # Reset search
-        self.search_entry.delete(0, ctk.END)
-        self.clear_search_button.pack_forget()
     
     def show_cart_view(self):
         # Hide all sections first
@@ -260,11 +247,6 @@ class UserApp:
         # Refresh orders
         self.refresh_previous_orders()
     
-    def clear_search(self):
-        self.search_entry.delete(0, ctk.END)
-        self.refresh_products_display()
-        self.clear_search_button.pack_forget()
-    
     def refresh_products_display(self, search_query=None):
         # Clear existing products
         for widget in self.products_frame.winfo_children():
@@ -273,35 +255,20 @@ class UserApp:
         # Get products (filtered if search query provided)
         if search_query:
             products = self.search_products(search_query)
-            # Show clear button when search is active
-            self.clear_search_button.pack(side="left")
         else:
             products = self.fetch_products()
-            # Hide clear button when no search is active
-            self.clear_search_button.pack_forget()
         
         # If no products found, display message
         if not products:
             no_products_label = ctk.CTkLabel(self.products_frame, text="No products available", 
-                                          font=("Arial", 16), text_color="gray")
+                                           font=("Arial", 16), text_color="gray")
             no_products_label.pack(pady=30)
         else:
-            # Create a frame for grid layout
-            grid_frame = ctk.CTkFrame(self.products_frame, fg_color="#f3f4f6")
-            grid_frame.pack(fill="both", expand=True)
-            
-            # Calculate how many products per row based on window width
-            # We'll use 3 products per row as default
-            products_per_row = 3
-            
-            # Layout products in a grid
-            for i, product in enumerate(products):
-                row = i // products_per_row
-                col = i % products_per_row
-                
+            # Displaying Items
+            for product in products:
                 # Create a white card with shadow effect
-                item_card = ctk.CTkFrame(grid_frame, fg_color="white", corner_radius=10)
-                item_card.grid(row=row, column=col, padx=10, pady=10, sticky="nsew")
+                item_card = ctk.CTkFrame(self.products_frame, fg_color="white", corner_radius=10)
+                item_card.pack(side="left", padx=10, pady=10, expand=True, fill="both")
                 
                 # Add some padding inside the card
                 inner_card = ctk.CTkFrame(item_card, fg_color="white", corner_radius=10)
@@ -335,64 +302,16 @@ class UserApp:
                 ctk.CTkLabel(inner_card, text=product["price"], 
                            font=("Arial", 16), text_color="black").pack(pady=(0, 10))
                 
-                # Quantity selector frame
-                quantity_frame = ctk.CTkFrame(inner_card, fg_color="white")
-                quantity_frame.pack(pady=(0, 10))
-                
-                # Decrease quantity button
-                decrease_btn = ctk.CTkButton(
-                    quantity_frame, text="-", width=30, height=30,
-                    fg_color="#d1d5db", hover_color="#9ca3af", text_color="black",
-                    command=lambda qv=f"quantity_{product['id']}": self.decrease_quantity(qv)
-                )
-                decrease_btn.pack(side="left", padx=(0, 5))
-                
-                # Quantity variable and display
-                quantity_var = ctk.StringVar(value="1")
-                quantity_label = ctk.CTkLabel(
-                    quantity_frame, textvariable=quantity_var,
-                    width=30, font=("Arial", 14, "bold")
-                )
-                quantity_label.pack(side="left", padx=5)
-                
-                # Set a tag to identify this quantity variable
-                quantity_var_id = f"quantity_{product['id']}"
-                setattr(self, quantity_var_id, quantity_var)
-                
-                # Increase quantity button
-                increase_btn = ctk.CTkButton(
-                    quantity_frame, text="+", width=30, height=30,
-                    fg_color="#d1d5db", hover_color="#9ca3af", text_color="black",
-                    command=lambda qv=quantity_var_id: self.increase_quantity(qv)
-                )
-                increase_btn.pack(side="left", padx=(5, 0))
-                
                 # Add to Cart button
                 add_cart_btn = ctk.CTkButton(
                     inner_card, text="Add to Cart", 
                     fg_color="#2563eb", hover_color="#1d4ed8", 
                     font=("Arial", 14), height=35,
                     command=lambda id=product["id"], name=product["name"], 
-                                  price=product["price"], raw_price=product["raw_price"],
-                                  qv=quantity_var_id: 
-                           self.add_to_cart(id, name, price, raw_price, qv)
+                                  price=product["price"], raw_price=product["raw_price"]: 
+                           self.add_to_cart(id, name, price, raw_price)
                 )
-                add_cart_btn.pack(pady=5)
-            
-            # Configure grid column weights to make them equal width
-            for i in range(products_per_row):
-                grid_frame.columnconfigure(i, weight=1)
-    
-    def increase_quantity(self, quantity_var_id):
-        var = getattr(self, quantity_var_id)
-        current_val = int(var.get())
-        var.set(str(current_val + 1))
-    
-    def decrease_quantity(self, quantity_var_id):
-        var = getattr(self, quantity_var_id)
-        current_val = int(var.get())
-        if current_val > 1:
-            var.set(str(current_val - 1))
+                add_cart_btn.pack(pady=10)
     
     def fetch_products(self):
         try:
@@ -523,7 +442,7 @@ class UserApp:
                     }
                     
                     # Create visual representation
-                    self.create_cart_item_display(item["name"], price_str, item["quantity"], item["product_id"])
+                    self.create_cart_item_display(item["name"], price_str, item["quantity"])
                 
                 self.update_cart_total()
             else:
@@ -577,11 +496,7 @@ class UserApp:
                 cursor.close()
                 connection.close()
     
-    def add_to_cart(self, product_id, product_name, product_price, raw_price, quantity_var_id):
-        # Get the quantity from the quantity variable
-        quantity_var = getattr(self, quantity_var_id)
-        quantity = int(quantity_var.get())
-        
+    def add_to_cart(self, product_id, product_name, product_price, raw_price):
         # Hide the empty cart message if it's the first item
         if not self.cart_items:
             self.empty_cart_label.pack_forget()
@@ -609,7 +524,7 @@ class UserApp:
                 
                 if existing_item:
                     # Update quantity
-                    new_quantity = existing_item["quantity"] + quantity
+                    new_quantity = existing_item["quantity"] + 1
                     cursor.execute(
                         "UPDATE CartItems SET quantity = %s WHERE cart_item_id = %s",
                         (new_quantity, existing_item["cart_item_id"])
@@ -632,16 +547,14 @@ class UserApp:
                     )
                     
                     product = cursor.fetchone()
-                    if not product or product["stock"] < quantity:
-                        available = product["stock"] if product else 0
-                        messagebox.showwarning("Stock Limit", 
-                                               f"Cannot add {quantity} of {product_name}. Only {available} available.")
+                    if not product or product["stock"] <= 0:
+                        messagebox.showwarning("Out of Stock", f"{product_name} is out of stock.")
                         return
                     
                     # Add new item to cart
                     cursor.execute(
                         "INSERT INTO CartItems (cart_id, product_id, quantity) VALUES (%s, %s, %s)",
-                        (cart_id, product_id, quantity)
+                        (cart_id, product_id, 1)
                     )
                     
                     # Get the inserted item's ID
@@ -657,13 +570,13 @@ class UserApp:
                         "name": product_name,
                         "price": product_price,
                         "raw_price": raw_price,
-                        "quantity": quantity,
+                        "quantity": 1,
                         "product_id": product_id,
                         "cart_item_id": cart_item_id
                     }
                     
                     # Create UI element
-                    self.create_cart_item_display(product_name, product_price, quantity, product_id)
+                    self.create_cart_item_display(product_name, product_price, 1)
                 
                 # Commit changes
                 connection.commit()
@@ -680,73 +593,93 @@ class UserApp:
             messagebox.showwarning("Login Required", "Please log in to add items to your cart.")
             return
         
-        # Reset quantity selector to 1
-        quantity_var.set("1")
-        
         # Update total
         self.update_cart_total()
         
         # Confirmation message
-        messagebox.showinfo("Added to Cart", f"{quantity} x {product_name} has been added to your cart!")
+        messagebox.showinfo("Added to Cart", f"{product_name} has been added to your cart!")
     
-    def update_cart_item_quantity(self, product_name, product_id, new_quantity):
-        if new_quantity <= 0:
-            # If quantity is 0 or negative, remove the item
-            self.remove_from_cart(product_name)
-            return
-        
-        # Update in database
+    def remove_from_cart(self, product_name):
+        # Remove from database
         if self.current_user["user_id"] and product_name in self.cart_items:
             try:
                 connection = connect_db()
                 cursor = connection.cursor()
-                
-                # Check available stock
-                cursor.execute(
-                    "SELECT stock FROM Products WHERE product_id = %s",
-                    (product_id,)
-                )
-                product = cursor.fetchone()
-                
-                if not product or product[0] < new_quantity:
-                    available = product[0] if product else 0
-                    messagebox.showwarning("Stock Limit", 
-                                          f"Cannot update to {new_quantity}. Only {available} available.")
-                    return False
                 
                 # Get cart_item_id
                 cart_item_id = self.cart_items[product_name].get("cart_item_id")
                 
                 if cart_item_id:
                     cursor.execute(
-                        "UPDATE CartItems SET quantity = %s WHERE cart_item_id = %s",
-                        (new_quantity, cart_item_id)
+                        "DELETE FROM CartItems WHERE cart_item_id = %s",
+                        (cart_item_id,)
                     )
                     connection.commit()
-                    
-                    # Update local cart item
-                    self.cart_items[product_name]["quantity"] = new_quantity
-                    
-                    # Update UI
-                    if product_name in self.cart_item_frames:
-                        self.cart_item_frames[product_name]["quantity_label"].configure(
-                            text=f"Qty: {new_quantity}"
-                        )
-                    
-                    # Update total
-                    self.update_cart_total()
-                    
-                return True
             except Exception as err:
                 messagebox.showerror("Database Error", str(err))
-                return False
             finally:
                 if connection and connection.is_connected():
                     cursor.close()
                     connection.close()
-                    
-        return False
+        
+        # Update UI
+        if product_name in self.cart_items:
+            self.cart_items.pop(product_name)
+        
+        if product_name in self.cart_item_frames:
+            self.cart_item_frames[product_name]["frame"].destroy()
+            self.cart_item_frames.pop(product_name)
+        
+        # Show empty cart message if cart is now empty
+        if not self.cart_items:
+            self.empty_cart_label.pack(pady=20)
+        
+        self.update_cart_total()
+    
 
+    def create_cart_item_display(self, product_name, product_price, quantity):
+        # Create a frame for this cart item
+        item_frame = ctk.CTkFrame(self.cart_container, fg_color="white", corner_radius=5, height=40)
+        item_frame.pack(fill="x", padx=10, pady=5)
+        
+        # Product name (left)
+        name_label = ctk.CTkLabel(item_frame, text=product_name, 
+                                font=("Arial", 14), text_color="black")
+        name_label.pack(side="left", padx=10, pady=10)
+        
+        # Product price (center)
+        price_label = ctk.CTkLabel(item_frame, text=product_price, 
+                                 font=("Arial", 14), text_color="black")
+        price_label.pack(side="left", padx=10, pady=10)
+        
+        # Quantity (right)
+        quantity_label = ctk.CTkLabel(item_frame, text=f"Qty: {quantity}", 
+                                    font=("Arial", 14), text_color="black")
+        quantity_label.pack(side="left", padx=10, pady=10)
+        
+        # Remove button (far right)
+        remove_btn = ctk.CTkButton(item_frame, text="Remove", 
+                                  fg_color="#ef4444", hover_color="#dc2626", 
+                                  font=("Arial", 12), width=80, height=30,
+                                  command=lambda p=product_name: self.remove_from_cart(p))
+        remove_btn.pack(side="right", padx=10, pady=10)
+        
+        # Store references
+        self.cart_item_frames[product_name] = {
+            "frame": item_frame,
+            "quantity_label": quantity_label
+        }
+    
+    def update_cart_total(self):
+        total = sum(item["raw_price"] * item["quantity"] for item in self.cart_items.values())
+        self.total_amount = total
+        self.total_label.configure(text=f"Total: ${total:.2f}")
+        
+        # Update the checkout button state
+        if total > 0:
+            self.checkout_btn.configure(state="normal")
+        else:
+            self.checkout_btn.configure(state="disabled")
     
     def proceed_to_checkout(self):
         if not self.current_user["user_id"]:
