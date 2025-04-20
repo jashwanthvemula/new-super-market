@@ -1,5 +1,7 @@
 import sys
 import os
+
+from matplotlib import pyplot as plt
 # Add parent directory to path so we can import from other modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -10,7 +12,7 @@ import subprocess
 import re
 import csv
 import datetime
-
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from admin.admin_nav import AdminNavigation
 from config_db import connect_db
 from utils_file import hash_password, read_login_file, write_login_file
@@ -1478,21 +1480,21 @@ class AdminApp:
         self.setup_user_activity_tab(user_tab)
 
     def setup_sales_report_tab(self, parent_frame):
-        # Main container
+        # Main frame with two panels
         report_frame = ctk.CTkFrame(parent_frame, fg_color="white", corner_radius=10)
         report_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Options Section
-        options_frame = ctk.CTkFrame(report_frame, fg_color="white", corner_radius=10,
+        # Left panel - Options
+        left_panel = ctk.CTkFrame(report_frame, fg_color="white", corner_radius=10,
                                 border_width=1, border_color="#e5e7eb")
-        options_frame.pack(fill="x", padx=20, pady=10)
+        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=0)
         
-        options_label = ctk.CTkLabel(options_frame, text="Report Options",
+        options_label = ctk.CTkLabel(left_panel, text="Report Options",
                                     font=("Arial", 18, "bold"), text_color="#2563eb")
         options_label.pack(anchor="w", padx=20, pady=(15, 10))
         
         # Date Range
-        date_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        date_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
         date_frame.pack(fill="x", padx=20, pady=10)
         
         period_label = ctk.CTkLabel(date_frame, text="Time Period:", font=("Arial", 14), text_color="gray")
@@ -1510,7 +1512,7 @@ class AdminApp:
             ("Custom Range", "custom_range")
         ]
         
-        period_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        period_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
         period_frame.pack(fill="x", padx=20, pady=(0, 10))
         
         for text, value in periods:
@@ -1519,7 +1521,7 @@ class AdminApp:
             radio.pack(side="left", padx=(0, 15))
         
         # Custom date range frame (hidden by default)
-        self.custom_date_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        self.custom_date_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
         
         # From date
         from_frame = ctk.CTkFrame(self.custom_date_frame, fg_color="transparent")
@@ -1543,11 +1545,29 @@ class AdminApp:
                                     width=150, height=30, corner_radius=5)
         self.sales_to_date.pack(side="left")
         
+        # Chart type
+        chart_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
+        chart_frame.pack(fill="x", padx=20, pady=10)
+        
+        chart_label = ctk.CTkLabel(chart_frame, text="Chart Type:", font=("Arial", 14), text_color="gray")
+        chart_label.pack(side="left", padx=(0, 10))
+        
+        self.sales_chart_var = ctk.StringVar(value="bar")
+        
+        bar_radio = ctk.CTkRadioButton(chart_frame, text="Bar Chart", variable=self.sales_chart_var, value="bar")
+        bar_radio.pack(side="left", padx=(0, 15))
+        
+        line_radio = ctk.CTkRadioButton(chart_frame, text="Line Chart", variable=self.sales_chart_var, value="line")
+        line_radio.pack(side="left", padx=(0, 15))
+        
+        pie_radio = ctk.CTkRadioButton(chart_frame, text="Pie Chart", variable=self.sales_chart_var, value="pie")
+        pie_radio.pack(side="left")
+        
         # Report Format
-        format_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        format_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
         format_frame.pack(fill="x", padx=20, pady=10)
         
-        format_label = ctk.CTkLabel(format_frame, text="Format:", font=("Arial", 14), text_color="gray")
+        format_label = ctk.CTkLabel(format_frame, text="Export Format:", font=("Arial", 14), text_color="gray")
         format_label.pack(side="left", padx=(0, 10))
         
         self.sales_format_var = ctk.StringVar(value="csv")
@@ -1556,62 +1576,91 @@ class AdminApp:
         csv_radio.pack(side="left", padx=(0, 15))
         
         txt_radio = ctk.CTkRadioButton(format_frame, text="Text", variable=self.sales_format_var, value="txt")
-        txt_radio.pack(side="left")
+        txt_radio.pack(side="left", padx=(0, 15))
+        
+        pdf_radio = ctk.CTkRadioButton(format_frame, text="PDF", variable=self.sales_format_var, value="pdf")
+        pdf_radio.pack(side="left")
+        
+        # Buttons frame
+        buttons_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
+        buttons_frame.pack(fill="x", padx=20, pady=(20, 10))
         
         # Generate Report Button
-        button_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
-        button_frame.pack(fill="x", padx=20, pady=(10, 20))
-        
-        generate_btn = ctk.CTkButton(button_frame, text="Generate Report",
+        generate_btn = ctk.CTkButton(buttons_frame, text="Generate Report",
                                     fg_color="#10b981", hover_color="#059669",
                                     font=("Arial", 14), height=40, width=150,
-                                    command=lambda: self.generate_sales_report())
+                                    command=self.generate_sales_report)
         generate_btn.pack(side="left", padx=(0, 10))
         
-        # Report preview section
-        preview_frame = ctk.CTkFrame(report_frame, fg_color="#f8fafc", corner_radius=10,
-                                border_width=1, border_color="#e5e7eb")
-        preview_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        # Preview Button
+        self.preview_graph_btn = ctk.CTkButton(buttons_frame, text="Preview Graph",
+                                        fg_color="#3b82f6", hover_color="#2563eb",
+                                        font=("Arial", 14), height=40, width=150,
+                                        command=self.preview_sales_graph)
+        self.preview_graph_btn.pack(side="left", padx=(0, 10))
         
-        preview_header = ctk.CTkFrame(preview_frame, fg_color="transparent")
+        # Download Button (disabled until report is generated)
+        self.sales_download_btn = ctk.CTkButton(buttons_frame, text="Download Report",
+                                        fg_color="#6366f1", hover_color="#4f46e5",
+                                        font=("Arial", 14), height=40, width=150,
+                                        state="disabled", command=self.download_sales_report)
+        self.sales_download_btn.pack(side="left")
+        
+        # Right panel - Preview
+        self.right_panel = ctk.CTkFrame(report_frame, fg_color="#f8fafc", corner_radius=10,
+                                    border_width=1, border_color="#e5e7eb")
+        self.right_panel.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=0)
+        
+        # Preview header
+        preview_header = ctk.CTkFrame(self.right_panel, fg_color="transparent")
         preview_header.pack(fill="x", padx=20, pady=(15, 5))
         
         preview_label = ctk.CTkLabel(preview_header, text="Report Preview",
                                     font=("Arial", 18, "bold"), text_color="#2563eb")
         preview_label.pack(side="left")
         
-        # Download button (disabled until report is generated)
-        self.sales_download_btn = ctk.CTkButton(preview_header, text="Download Report",
-                                        fg_color="#3b82f6", hover_color="#2563eb",
-                                        font=("Arial", 14), height=35, width=150,
-                                        state="disabled", command=lambda: self.download_sales_report())
-        self.sales_download_btn.pack(side="right")
+        # Tab view for switching between graph and text preview
+        self.preview_tabs = ctk.CTkTabview(self.right_panel, corner_radius=5)
+        self.preview_tabs.pack(fill="both", expand=True, padx=20, pady=(5, 20))
         
-        # Preview text area
-        self.sales_preview = ctk.CTkTextbox(preview_frame, fg_color="white", corner_radius=5,
+        self.graph_tab = self.preview_tabs.add("Graph View")
+        self.text_tab = self.preview_tabs.add("Text View")
+        
+        # Frame for graph display
+        self.graph_frame = ctk.CTkFrame(self.graph_tab, fg_color="white", corner_radius=5)
+        self.graph_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Initial message in graph frame
+        self.graph_message = ctk.CTkLabel(self.graph_frame, text="Generate a report and click 'Preview Graph' to visualize data",
+                                    font=("Arial", 14), text_color="gray")
+        self.graph_message.pack(expand=True)
+        
+        # Text preview area
+        self.sales_preview = ctk.CTkTextbox(self.text_tab, fg_color="white", corner_radius=5,
                                     width=800, height=300)
-        self.sales_preview.pack(fill="both", expand=True, padx=20, pady=(5, 20))
+        self.sales_preview.pack(fill="both", expand=True, padx=10, pady=10)
         self.sales_preview.insert("1.0", "Report preview will appear here. Generate a report to see data.")
         
-        # Store report data for download
+        # Store report data for graph and download
         self.sales_report_data = None
+        self.sales_data = None
 
     def setup_inventory_report_tab(self, parent_frame):
-        # Main container
+        # Main frame with two panels
         report_frame = ctk.CTkFrame(parent_frame, fg_color="white", corner_radius=10)
         report_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Options Section
-        options_frame = ctk.CTkFrame(report_frame, fg_color="white", corner_radius=10,
+        # Left panel - Options
+        left_panel = ctk.CTkFrame(report_frame, fg_color="white", corner_radius=10,
                                 border_width=1, border_color="#e5e7eb")
-        options_frame.pack(fill="x", padx=20, pady=10)
+        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=0)
         
-        options_label = ctk.CTkLabel(options_frame, text="Report Options",
+        options_label = ctk.CTkLabel(left_panel, text="Report Options",
                                     font=("Arial", 18, "bold"), text_color="#2563eb")
         options_label.pack(anchor="w", padx=20, pady=(15, 10))
         
         # Report Type
-        type_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        type_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
         type_frame.pack(fill="x", padx=20, pady=10)
         
         type_label = ctk.CTkLabel(type_frame, text="Report Type:", font=("Arial", 14), text_color="gray")
@@ -1632,7 +1681,7 @@ class AdminApp:
         out_of_stock_radio.pack(side="left")
         
         # Sort By
-        sort_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        sort_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
         sort_frame.pack(fill="x", padx=20, pady=10)
         
         sort_label = ctk.CTkLabel(sort_frame, text="Sort By:", font=("Arial", 14), text_color="gray")
@@ -1652,11 +1701,29 @@ class AdminApp:
                                     variable=self.inventory_sort_var, value="stock")
         stock_radio.pack(side="left")
         
+        # Chart type
+        chart_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
+        chart_frame.pack(fill="x", padx=20, pady=10)
+        
+        chart_label = ctk.CTkLabel(chart_frame, text="Chart Type:", font=("Arial", 14), text_color="gray")
+        chart_label.pack(side="left", padx=(0, 10))
+        
+        self.inventory_chart_var = ctk.StringVar(value="bar")
+        
+        bar_radio = ctk.CTkRadioButton(chart_frame, text="Bar Chart", variable=self.inventory_chart_var, value="bar")
+        bar_radio.pack(side="left", padx=(0, 15))
+        
+        pie_radio = ctk.CTkRadioButton(chart_frame, text="Pie Chart", variable=self.inventory_chart_var, value="pie")
+        pie_radio.pack(side="left", padx=(0, 15))
+        
+        treemap_radio = ctk.CTkRadioButton(chart_frame, text="Treemap", variable=self.inventory_chart_var, value="treemap")
+        treemap_radio.pack(side="left")
+        
         # Report Format
-        format_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        format_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
         format_frame.pack(fill="x", padx=20, pady=10)
         
-        format_label = ctk.CTkLabel(format_frame, text="Format:", font=("Arial", 14), text_color="gray")
+        format_label = ctk.CTkLabel(format_frame, text="Export Format:", font=("Arial", 14), text_color="gray")
         format_label.pack(side="left", padx=(0, 10))
         
         self.inventory_format_var = ctk.StringVar(value="csv")
@@ -1665,65 +1732,310 @@ class AdminApp:
         csv_radio.pack(side="left", padx=(0, 15))
         
         txt_radio = ctk.CTkRadioButton(format_frame, text="Text", variable=self.inventory_format_var, value="txt")
-        txt_radio.pack(side="left")
+        txt_radio.pack(side="left", padx=(0, 15))
+        
+        pdf_radio = ctk.CTkRadioButton(format_frame, text="PDF", variable=self.inventory_format_var, value="pdf")
+        pdf_radio.pack(side="left")
+        
+        # Buttons frame
+        buttons_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
+        buttons_frame.pack(fill="x", padx=20, pady=(20, 10))
         
         # Generate Report Button
-        button_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
-        button_frame.pack(fill="x", padx=20, pady=(10, 20))
-        
-        generate_btn = ctk.CTkButton(button_frame, text="Generate Report",
+        generate_btn = ctk.CTkButton(buttons_frame, text="Generate Report",
                                     fg_color="#10b981", hover_color="#059669",
                                     font=("Arial", 14), height=40, width=150,
-                                    command=lambda: self.generate_inventory_report())
+                                    command=self.generate_inventory_report)
         generate_btn.pack(side="left", padx=(0, 10))
         
-        # Report preview section
-        preview_frame = ctk.CTkFrame(report_frame, fg_color="#f8fafc", corner_radius=10,
-                                border_width=1, border_color="#e5e7eb")
-        preview_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        # Preview Button
+        self.preview_inventory_graph_btn = ctk.CTkButton(buttons_frame, text="Preview Graph",
+                                                fg_color="#3b82f6", hover_color="#2563eb",
+                                                font=("Arial", 14), height=40, width=150,
+                                                command=self.preview_inventory_graph)
+        self.preview_inventory_graph_btn.pack(side="left", padx=(0, 10))
         
-        preview_header = ctk.CTkFrame(preview_frame, fg_color="transparent")
+        # Download Button (disabled until report is generated)
+        self.inventory_download_btn = ctk.CTkButton(buttons_frame, text="Download Report",
+                                            fg_color="#6366f1", hover_color="#4f46e5",
+                                            font=("Arial", 14), height=40, width=150,
+                                            state="disabled", command=self.download_inventory_report)
+        self.inventory_download_btn.pack(side="left")
+        
+        # Right panel - Preview
+        self.inventory_right_panel = ctk.CTkFrame(report_frame, fg_color="#f8fafc", corner_radius=10,
+                                            border_width=1, border_color="#e5e7eb")
+        self.inventory_right_panel.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=0)
+        
+        # Preview header
+        preview_header = ctk.CTkFrame(self.inventory_right_panel, fg_color="transparent")
         preview_header.pack(fill="x", padx=20, pady=(15, 5))
         
-        preview_label = ctk.CTkLabel(preview_header, text="Report Preview",
+        preview_label = ctk.CTkLabel(preview_header, text="Inventory Report Preview",
                                     font=("Arial", 18, "bold"), text_color="#2563eb")
         preview_label.pack(side="left")
         
-        # Download button (disabled until report is generated)
-        self.inventory_download_btn = ctk.CTkButton(preview_header, text="Download Report",
-                                            fg_color="#3b82f6", hover_color="#2563eb",
-                                            font=("Arial", 14), height=35, width=150,
-                                            state="disabled", command=lambda: self.download_inventory_report())
-        self.inventory_download_btn.pack(side="right")
+        # Tab view for switching between graph and text preview
+        self.inventory_tabs = ctk.CTkTabview(self.inventory_right_panel, corner_radius=5)
+        self.inventory_tabs.pack(fill="both", expand=True, padx=20, pady=(5, 20))
         
-        # Preview text area
-        self.inventory_preview = ctk.CTkTextbox(preview_frame, fg_color="white", corner_radius=5,
-                                        width=800, height=300)
-        self.inventory_preview.pack(fill="both", expand=True, padx=20, pady=(5, 20))
+        self.inventory_graph_tab = self.inventory_tabs.add("Graph View")
+        self.inventory_text_tab = self.inventory_tabs.add("Text View")
+        
+        # Frame for graph display
+        self.inventory_graph_frame = ctk.CTkFrame(self.inventory_graph_tab, fg_color="white", corner_radius=5)
+        self.inventory_graph_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Initial message in graph frame
+        self.inventory_graph_message = ctk.CTkLabel(self.inventory_graph_frame, 
+                                            text="Generate a report and click 'Preview Graph' to visualize data",
+                                            font=("Arial", 14), text_color="gray")
+        self.inventory_graph_message.pack(expand=True)
+        
+        # Text preview area
+        self.inventory_preview = ctk.CTkTextbox(self.inventory_text_tab, fg_color="white", corner_radius=5)
+        self.inventory_preview.pack(fill="both", expand=True, padx=10, pady=10)
         self.inventory_preview.insert("1.0", "Report preview will appear here. Generate a report to see data.")
         
         # Store report data for download
         self.inventory_report_data = None
+        self.inventory_data = None
+    def preview_inventory_graph(self):
+        """Generate and display a graph visualization of inventory data"""
+        if not self.inventory_data:
+            messagebox.showwarning("No Data", "Please generate a report first.")
+            return
+        
+        # Clear existing graph
+        for widget in self.inventory_graph_frame.winfo_children():
+            widget.destroy()
+        
+        # Create figure for the graph
+        fig, ax = plt.subplots(figsize=(8, 6), dpi=100)
+        
+        # Get chart type
+        chart_type = self.inventory_chart_var.get()
+        
+        try:
+            # Extract data for graphing
+            if not self.inventory_data or len(self.inventory_data) == 0:
+                # Show message if no data
+                self.inventory_graph_message = ctk.CTkLabel(self.inventory_graph_frame, 
+                                                    text="No data available for visualization",
+                                                    font=("Arial", 14), text_color="gray")
+                self.inventory_graph_message.pack(expand=True)
+                return
+            
+            # Limit to top 15 products for better visualization
+            data_to_show = self.inventory_data
+            if len(data_to_show) > 15:
+                # Sort by stock if stock is the primary metric we're showing
+                sorted_data = sorted(data_to_show, key=lambda x: x['stock'], reverse=True)
+                data_to_show = sorted_data[:15]
+            
+            # Extract names and stock levels
+            names = [item['name'] if len(item['name']) < 15 else item['name'][:12] + '...' for item in data_to_show]
+            stock_levels = [item['stock'] for item in data_to_show]
+            prices = [float(item['price']) for item in data_to_show]
+            values = [float(item['price']) * item['stock'] for item in data_to_show]
+            
+            # Create appropriate chart type
+            if chart_type == "bar":
+                # Create horizontal bar chart for better readability with many items
+                bars = ax.barh(names, stock_levels, color='#3b82f6')
+                ax.set_title('Inventory Stock Levels')
+                ax.set_xlabel('Units in Stock')
+                
+                # Add value labels on bars
+                for i, bar in enumerate(bars):
+                    width = bar.get_width()
+                    ax.text(width + 0.3, bar.get_y() + bar.get_height()/2,
+                            f'{width}', ha='left', va='center')
+                
+                # Adjust y-axis to prevent overlapping labels
+                plt.tight_layout()
+                
+            elif chart_type == "pie":
+                # For pie chart, show product values (price * quantity) instead of just quantity
+                
+                # Only show top 8 items in pie chart for readability
+                if len(data_to_show) > 8:
+                    # Sort by value
+                    sorted_data = sorted(data_to_show, key=lambda x: float(x['price']) * x['stock'], reverse=True)
+                    top_items = sorted_data[:7]  # Take top 7
+                    
+                    # Sum up remaining items
+                    other_value = sum(float(item['price']) * item['stock'] for item in sorted_data[7:])
+                    
+                    # Extract data
+                    names = [item['name'] if len(item['name']) < 15 else item['name'][:12] + '...' for item in top_items]
+                    names.append('Other Products')
+                    values = [float(item['price']) * item['stock'] for item in top_items]
+                    values.append(other_value)
+                else:
+                    # Extract data
+                    names = [item['name'] if len(item['name']) < 15 else item['name'][:12] + '...' for item in data_to_show]
+                    values = [float(item['price']) * item['stock'] for item in data_to_show]
+                
+                # Colors for different products
+                colors = plt.cm.tab20.colors[:len(names)]
+                
+                # Create pie chart
+                wedges, texts, autotexts = ax.pie(
+                    values, 
+                    labels=names,
+                    autopct='%1.1f%%', 
+                    startangle=90, 
+                    colors=colors
+                )
+                
+                # Equal aspect ratio ensures that pie is drawn as a circle
+                ax.axis('equal')
+                ax.set_title('Inventory Value Distribution')
+                
+                # Make text more visible
+                for text in texts:
+                    text.set_fontsize(8)
+                for autotext in autotexts:
+                    autotext.set_fontsize(8)
+                    autotext.set_color('white')
+                    
+            elif chart_type == "treemap":
+                # Create a treemap using matplotlib's nested rectangles
+                # Sort by value
+                sorted_data = sorted(data_to_show, key=lambda x: float(x['price']) * x['stock'], reverse=True)
+                
+                # Extract data
+                names = [item['name'] if len(item['name']) < 15 else item['name'][:12] + '...' for item in sorted_data]
+                values = [float(item['price']) * item['stock'] for item in sorted_data]
+                
+                # Calculate total value
+                total_value = sum(values)
+                
+                # Create a custom treemap (simplified version)
+                # We'll create a grid of rectangles sized proportionally to values
+                rows, cols = 3, 5  # Adjust grid size based on number of items
+                rects = []
+                colors = plt.cm.viridis(np.linspace(0, 1, len(values)))
+                
+                # Create rectangles proportional to values
+                for i, (name, value, color) in enumerate(zip(names, values, colors)):
+                    # Calculate rectangle size
+                    size = value / total_value
+                    rect = plt.Rectangle((0, 0), size * 10, size * 10, color=color)
+                    rects.append(rect)
+                
+                # Clear the axis
+                ax.clear()
+                
+                # Add a text title
+                ax.text(0.5, 0.95, 'Inventory Value Distribution', 
+                    horizontalalignment='center', verticalalignment='center',
+                    transform=ax.transAxes, fontsize=14, fontweight='bold')
+                
+                # Manually place rectangles in a grid-like layout
+                max_cols = 4
+                row, col = 0, 0
+                max_width = 1.0 / max_cols
+                max_height = 0.8 / ((len(values) // max_cols) + 1)
+                
+                for i, (name, value, color) in enumerate(zip(names, values, colors)):
+                    # Calculate relative size
+                    size = value / total_value
+                    
+                    # Place rectangle
+                    rect_width = max_width * (0.5 + size * 2)  # Adjust width based on value
+                    rect_height = max_height * (0.5 + size * 2)  # Adjust height based on value
+                    
+                    # Ensure rectangle stays within bounds
+                    rect_width = min(rect_width, max_width * 0.95)
+                    rect_height = min(rect_height, max_height * 0.95)
+                    
+                    # Calculate position
+                    x_pos = col * max_width + (max_width - rect_width) / 2
+                    y_pos = 0.9 - (row * max_height + (max_height - rect_height) / 2)
+                    
+                    # Create rectangle
+                    rect = plt.Rectangle((x_pos, y_pos), rect_width, rect_height, 
+                                    fill=True, color=color, alpha=0.8)
+                    ax.add_patch(rect)
+                    
+                    # Add text
+                    ax.text(x_pos + rect_width/2, y_pos + rect_height/2, 
+                        f"{name}\n${value:.2f}", 
+                        horizontalalignment='center', verticalalignment='center',
+                        fontsize=8, color='white')
+                    
+                    # Move to next position
+                    col += 1
+                    if col >= max_cols:
+                        col = 0
+                        row += 1
+                
+                # Remove axis ticks and spines
+                ax.set_xticks([])
+                ax.set_yticks([])
+                for spine in ax.spines.values():
+                    spine.set_visible(False)
+                
+                # Set axis limits
+                ax.set_xlim(0, 1)
+                ax.set_ylim(0, 1)
+            
+            # Add data summary above the chart
+            total_stock = sum(item['stock'] for item in self.inventory_data)
+            total_value = sum(float(item['price']) * item['stock'] for item in self.inventory_data)
+            out_of_stock = sum(1 for item in self.inventory_data if item['stock'] == 0)
+            low_stock = sum(1 for item in self.inventory_data if 0 < item['stock'] <= 10)
+            
+            title_text = f'Total Products: {len(self.inventory_data)} | '
+            title_text += f'Value: ${total_value:.2f} | '
+            title_text += f'Units: {total_stock} | '
+            title_text += f'Out of Stock: {out_of_stock} | '
+            title_text += f'Low Stock: {low_stock}'
+            
+            if chart_type != "treemap":  # For treemap, we've already added a title
+                ax.set_title(title_text, fontsize=9, pad=15)
+            
+            # Adjust layout for better fit
+            plt.tight_layout()
+            
+            # Embed the graph in the Tkinter window
+            canvas = FigureCanvasTkAgg(fig, master=self.inventory_graph_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill="both", expand=True)
+            
+            # Switch to graph tab
+            self.inventory_tabs.set("Graph View")
+            
+        except Exception as e:
+            # If there's an error, show error message
+            for widget in self.inventory_graph_frame.winfo_children():
+                widget.destroy()
+            error_label = ctk.CTkLabel(self.inventory_graph_frame, text=f"Error creating graph: {str(e)}",
+                                    font=("Arial", 14), text_color="#ef4444")
+            error_label.pack(expand=True)
+            print(f"Graph error: {e}")  # Print to console for debugging
 
     def setup_user_activity_tab(self, parent_frame):
-        # Main container
+        # Main frame with two panels
         report_frame = ctk.CTkFrame(parent_frame, fg_color="white", corner_radius=10)
         report_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Options Section
-        options_frame = ctk.CTkFrame(report_frame, fg_color="white", corner_radius=10,
+        # Left panel - Options
+        left_panel = ctk.CTkFrame(report_frame, fg_color="white", corner_radius=10,
                                 border_width=1, border_color="#e5e7eb")
-        options_frame.pack(fill="x", padx=20, pady=10)
+        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=0)
         
-        options_label = ctk.CTkLabel(options_frame, text="Report Options",
+        options_label = ctk.CTkLabel(left_panel, text="Report Options",
                                     font=("Arial", 18, "bold"), text_color="#2563eb")
         options_label.pack(anchor="w", padx=20, pady=(15, 10))
         
         # Report Type
-        type_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        type_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
         type_frame.pack(fill="x", padx=20, pady=10)
         
-        type_label = ctk.CTkLabel(type_frame, text="Report Type:", font=("Arial", 14), text_color="gray")
+        type_label = ctk.CTkLabel(type_frame, text="User Type:", font=("Arial", 14), text_color="gray")
         type_label.pack(side="left", padx=(0, 10))
         
         self.user_type_var = ctk.StringVar(value="all_users")
@@ -1741,7 +2053,7 @@ class AdminApp:
         customer_radio.pack(side="left")
         
         # Activity Filter
-        filter_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        filter_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
         filter_frame.pack(fill="x", padx=20, pady=10)
         
         filter_label = ctk.CTkLabel(filter_frame, text="Activity:", font=("Arial", 14), text_color="gray")
@@ -1755,10 +2067,10 @@ class AdminApp:
         
         orders_radio = ctk.CTkRadioButton(filter_frame, text="Orders Only", 
                                         variable=self.user_activity_var, value="orders")
-        orders_radio.pack(side="left", padx=(0, 15))
+        orders_radio.pack(side="left")
         
         # Time Period
-        period_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        period_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
         period_frame.pack(fill="x", padx=20, pady=10)
         
         period_label = ctk.CTkLabel(period_frame, text="Time Period:", font=("Arial", 14), text_color="gray")
@@ -1778,11 +2090,29 @@ class AdminApp:
                                         variable=self.user_period_var, value="all_time")
         all_time_radio.pack(side="left")
         
+        # Chart type
+        chart_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
+        chart_frame.pack(fill="x", padx=20, pady=10)
+        
+        chart_label = ctk.CTkLabel(chart_frame, text="Chart Type:", font=("Arial", 14), text_color="gray")
+        chart_label.pack(side="left", padx=(0, 10))
+        
+        self.user_chart_var = ctk.StringVar(value="bar")
+        
+        bar_radio = ctk.CTkRadioButton(chart_frame, text="Bar Chart", variable=self.user_chart_var, value="bar")
+        bar_radio.pack(side="left", padx=(0, 15))
+        
+        pie_radio = ctk.CTkRadioButton(chart_frame, text="Pie Chart", variable=self.user_chart_var, value="pie")
+        pie_radio.pack(side="left", padx=(0, 15))
+        
+        bubble_radio = ctk.CTkRadioButton(chart_frame, text="Bubble Chart", variable=self.user_chart_var, value="bubble")
+        bubble_radio.pack(side="left")
+        
         # Report Format
-        format_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
+        format_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
         format_frame.pack(fill="x", padx=20, pady=10)
         
-        format_label = ctk.CTkLabel(format_frame, text="Format:", font=("Arial", 14), text_color="gray")
+        format_label = ctk.CTkLabel(format_frame, text="Export Format:", font=("Arial", 14), text_color="gray")
         format_label.pack(side="left", padx=(0, 10))
         
         self.user_format_var = ctk.StringVar(value="csv")
@@ -1791,45 +2121,74 @@ class AdminApp:
         csv_radio.pack(side="left", padx=(0, 15))
         
         txt_radio = ctk.CTkRadioButton(format_frame, text="Text", variable=self.user_format_var, value="txt")
-        txt_radio.pack(side="left")
+        txt_radio.pack(side="left", padx=(0, 15))
+        
+        pdf_radio = ctk.CTkRadioButton(format_frame, text="PDF", variable=self.user_format_var, value="pdf")
+        pdf_radio.pack(side="left")
+        
+        # Buttons frame
+        buttons_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
+        buttons_frame.pack(fill="x", padx=20, pady=(20, 10))
         
         # Generate Report Button
-        button_frame = ctk.CTkFrame(options_frame, fg_color="transparent")
-        button_frame.pack(fill="x", padx=20, pady=(10, 20))
-        
-        generate_btn = ctk.CTkButton(button_frame, text="Generate Report",
+        generate_btn = ctk.CTkButton(buttons_frame, text="Generate Report",
                                     fg_color="#10b981", hover_color="#059669",
                                     font=("Arial", 14), height=40, width=150,
-                                    command=lambda: self.generate_user_report())
+                                    command=self.generate_user_report)
         generate_btn.pack(side="left", padx=(0, 10))
         
-        # Report preview section
-        preview_frame = ctk.CTkFrame(report_frame, fg_color="#f8fafc", corner_radius=10,
-                                border_width=1, border_color="#e5e7eb")
-        preview_frame.pack(fill="both", expand=True, padx=20, pady=10)
+        # Preview Button
+        self.preview_user_graph_btn = ctk.CTkButton(buttons_frame, text="Preview Graph",
+                                            fg_color="#3b82f6", hover_color="#2563eb",
+                                            font=("Arial", 14), height=40, width=150,
+                                            command=self.preview_user_graph)
+        self.preview_user_graph_btn.pack(side="left", padx=(0, 10))
         
-        preview_header = ctk.CTkFrame(preview_frame, fg_color="transparent")
+        # Download Button (disabled until report is generated)
+        self.user_download_btn = ctk.CTkButton(buttons_frame, text="Download Report",
+                                        fg_color="#6366f1", hover_color="#4f46e5",
+                                        font=("Arial", 14), height=40, width=150,
+                                        state="disabled", command=self.download_user_report)
+        self.user_download_btn.pack(side="left")
+        
+        # Right panel - Preview
+        self.user_right_panel = ctk.CTkFrame(report_frame, fg_color="#f8fafc", corner_radius=10,
+                                        border_width=1, border_color="#e5e7eb")
+        self.user_right_panel.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=0)
+        
+        # Preview header
+        preview_header = ctk.CTkFrame(self.user_right_panel, fg_color="transparent")
         preview_header.pack(fill="x", padx=20, pady=(15, 5))
         
-        preview_label = ctk.CTkLabel(preview_header, text="Report Preview",
+        preview_label = ctk.CTkLabel(preview_header, text="User Activity Report Preview",
                                     font=("Arial", 18, "bold"), text_color="#2563eb")
         preview_label.pack(side="left")
         
-        # Download button (disabled until report is generated)
-        self.user_download_btn = ctk.CTkButton(preview_header, text="Download Report",
-                                        fg_color="#3b82f6", hover_color="#2563eb",
-                                        font=("Arial", 14), height=35, width=150,
-                                        state="disabled", command=lambda: self.download_user_report())
-        self.user_download_btn.pack(side="right")
+        # Tab view for switching between graph and text preview
+        self.user_tabs = ctk.CTkTabview(self.user_right_panel, corner_radius=5)
+        self.user_tabs.pack(fill="both", expand=True, padx=20, pady=(5, 20))
         
-        # Preview text area
-        self.user_preview = ctk.CTkTextbox(preview_frame, fg_color="white", corner_radius=5,
-                                    width=800, height=300)
-        self.user_preview.pack(fill="both", expand=True, padx=20, pady=(5, 20))
+        self.user_graph_tab = self.user_tabs.add("Graph View")
+        self.user_text_tab = self.user_tabs.add("Text View")
+        
+        # Frame for graph display
+        self.user_graph_frame = ctk.CTkFrame(self.user_graph_tab, fg_color="white", corner_radius=5)
+        self.user_graph_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Initial message in graph frame
+        self.user_graph_message = ctk.CTkLabel(self.user_graph_frame, 
+                                        text="Generate a report and click 'Preview Graph' to visualize data",
+                                        font=("Arial", 14), text_color="gray")
+        self.user_graph_message.pack(expand=True)
+        
+        # Text preview area
+        self.user_preview = ctk.CTkTextbox(self.user_text_tab, fg_color="white", corner_radius=5)
+        self.user_preview.pack(fill="both", expand=True, padx=10, pady=10)
         self.user_preview.insert("1.0", "Report preview will appear here. Generate a report to see data.")
         
         # Store report data for download
         self.user_report_data = None
+        self.user_data = None
 
     def toggle_custom_date_range(self):
         """Show or hide custom date range based on selection"""
@@ -1869,23 +2228,34 @@ class AdminApp:
                 return
         
         # Fetch sales data for the period
-        sales_data = self.fetch_sales_data(from_date, to_date)
+        self.sales_data = self.fetch_sales_data(from_date, to_date)
         
-        if not sales_data:
+        if not self.sales_data:
             self.sales_preview.delete("1.0", "end")
             self.sales_preview.insert("1.0", "No sales data found for the selected period.")
             self.sales_download_btn.configure(state="disabled")
+            
+            # Clear any existing graph
+            for widget in self.graph_frame.winfo_children():
+                widget.destroy()
+            self.graph_message = ctk.CTkLabel(self.graph_frame, text="No data available for visualization",
+                                        font=("Arial", 14), text_color="gray")
+            self.graph_message.pack(expand=True)
             return
         
         # Format data for preview and download
-        self.sales_report_data = self.format_sales_data(sales_data, report_format)
+        self.sales_report_data = self.format_sales_data(self.sales_data, report_format)
         
-        # Show preview
+        # Show preview in text view
         self.sales_preview.delete("1.0", "end")
         self.sales_preview.insert("1.0", self.sales_report_data)
         
-        # Enable download button
+        # Enable download and preview buttons
         self.sales_download_btn.configure(state="normal")
+        self.preview_tabs.set("Text View")
+        
+        # Show success message
+        messagebox.showinfo("Report Generated", "Sales report has been generated successfully. You can now preview the graph or download the report.")
 
     def fetch_sales_data(self, from_date, to_date):
         """Fetch sales data from database for given period"""
@@ -2002,6 +2372,127 @@ class AdminApp:
                 report += "\n" + "-" * 50 + "\n\n"
             
             return report
+    def preview_sales_graph(self):
+        """Generate and display a graph visualization of sales data"""
+        if not self.sales_data:
+            messagebox.showwarning("No Data", "Please generate a report first.")
+            return
+        
+        # Clear existing graph
+        for widget in self.graph_frame.winfo_children():
+            widget.destroy()
+        
+        # Create figure for the graph
+        fig, ax = plt.subplots(figsize=(8, 6), dpi=100)
+        
+        # Get chart type
+        chart_type = self.sales_chart_var.get()
+        
+        try:
+            # Extract data for graphing
+            if not self.sales_data:
+                # Show message if no data
+                self.graph_message = ctk.CTkLabel(self.graph_frame, text="No data available for visualization",
+                                            font=("Arial", 14), text_color="gray")
+                self.graph_message.pack(expand=True)
+                return
+            
+            # Group data by date (daily)
+            date_totals = {}
+            for order in self.sales_data:
+                date_str = order['order_date'].strftime("%Y-%m-%d")
+                if date_str in date_totals:
+                    date_totals[date_str] += float(order['total_amount'])
+                else:
+                    date_totals[date_str] = float(order['total_amount'])
+            
+            # Sort dates
+            sorted_dates = sorted(date_totals.keys())
+            totals = [date_totals[date] for date in sorted_dates]
+            
+            # Format dates for display (short format)
+            display_dates = [date.split('-')[1] + '/' + date.split('-')[2] for date in sorted_dates]
+            
+            # Create appropriate chart type
+            if chart_type == "bar":
+                bars = ax.bar(display_dates, totals, color='#3b82f6')
+                ax.set_title('Daily Sales')
+                ax.set_xlabel('Date (MM/DD)')
+                ax.set_ylabel('Sales Amount ($)')
+                
+                # Add value labels on top of each bar
+                for bar in bars:
+                    height = bar.get_height()
+                    ax.text(bar.get_x() + bar.get_width()/2., height + 0.1,
+                            f'${height:.2f}', ha='center', va='bottom', rotation=0,
+                            fontsize=8)
+                    
+            elif chart_type == "line":
+                ax.plot(display_dates, totals, marker='o', linestyle='-', color='#3b82f6', linewidth=2)
+                ax.set_title('Sales Trend')
+                ax.set_xlabel('Date (MM/DD)')
+                ax.set_ylabel('Sales Amount ($)')
+                
+                # Add grid for better readability
+                ax.grid(True, linestyle='--', alpha=0.7)
+                
+            elif chart_type == "pie":
+                # For pie chart, group by status instead of date
+                status_totals = {}
+                for order in self.sales_data:
+                    status = order['status']
+                    if status in status_totals:
+                        status_totals[status] += float(order['total_amount'])
+                    else:
+                        status_totals[status] = float(order['total_amount'])
+                
+                # Colors for different statuses
+                colors = ['#3b82f6', '#10b981', '#ef4444', '#f59e0b', '#8b5cf6']
+                
+                # Create pie chart
+                wedges, texts, autotexts = ax.pie(
+                    status_totals.values(), 
+                    labels=status_totals.keys(),
+                    autopct='%1.1f%%', 
+                    startangle=90, 
+                    colors=colors
+                )
+                
+                # Equal aspect ratio ensures that pie is drawn as a circle
+                ax.axis('equal')
+                ax.set_title('Sales by Status')
+                
+                # Make text more visible
+                for text in texts:
+                    text.set_fontsize(10)
+                for autotext in autotexts:
+                    autotext.set_fontsize(9)
+                    autotext.set_color('white')
+            
+            # Add data summary above the chart
+            total_sales = sum(float(order['total_amount']) for order in self.sales_data)
+            avg_order = total_sales / len(self.sales_data) if self.sales_data else 0
+            ax.set_title(f'Total Sales: ${total_sales:.2f} | Orders: {len(self.sales_data)} | Avg: ${avg_order:.2f}',
+                    fontsize=10, pad=15)
+            
+            # Adjust layout for better fit
+            plt.tight_layout()
+            
+            # Embed the graph in the Tkinter window
+            canvas = FigureCanvasTkAgg(fig, master=self.graph_frame)
+            canvas.draw()
+            canvas.get_tk_widget().pack(fill="both", expand=True)
+            
+            # Switch to graph tab
+            self.preview_tabs.set("Graph View")
+            
+        except Exception as e:
+            # If there's an error, show error message
+            for widget in self.graph_frame.winfo_children():
+                widget.destroy()
+            error_label = ctk.CTkLabel(self.graph_frame, text=f"Error creating graph: {str(e)}",
+                                    font=("Arial", 14), text_color="#ef4444")
+            error_label.pack(expand=True)
 
     def download_sales_report(self):
         """Download sales report to file"""
@@ -2041,24 +2532,34 @@ class AdminApp:
         report_format = self.inventory_format_var.get()
         
         # Fetch inventory data
-        inventory_data = self.fetch_inventory_data(report_type, sort_by)
+        self.inventory_data = self.fetch_inventory_data(report_type, sort_by)
         
-        if not inventory_data:
+        if not self.inventory_data:
             self.inventory_preview.delete("1.0", "end")
             self.inventory_preview.insert("1.0", "No inventory data found.")
             self.inventory_download_btn.configure(state="disabled")
+            
+            # Clear any existing graph
+            for widget in self.inventory_graph_frame.winfo_children():
+                widget.destroy()
+            self.inventory_graph_message = ctk.CTkLabel(self.inventory_graph_frame, text="No data available for visualization",
+                                                font=("Arial", 14), text_color="gray")
+            self.inventory_graph_message.pack(expand=True)
             return
         
         # Format data for preview and download
-        self.inventory_report_data = self.format_inventory_data(inventory_data, report_format)
+        self.inventory_report_data = self.format_inventory_data(self.inventory_data, report_format)
         
-        # Show preview
+        # Show preview in text view
         self.inventory_preview.delete("1.0", "end")
         self.inventory_preview.insert("1.0", self.inventory_report_data)
         
         # Enable download button
         self.inventory_download_btn.configure(state="normal")
-
+        self.inventory_tabs.set("Text View")
+        
+        # Show success message
+        messagebox.showinfo("Report Generated", "Inventory report has been generated successfully. You can now preview the graph or download the report.")
     def fetch_inventory_data(self, report_type, sort_by):
         """Fetch inventory data from database"""
         try:
