@@ -86,6 +86,13 @@ class AdminApp:
             
             # Show login screen for admin if not logged in
             self.setup_login_ui()
+    def logout(self):
+        # Remove the user file when logging out
+        if os.path.exists("current_user.txt"):
+            os.remove("current_user.txt")
+        
+        self.root.destroy()
+        subprocess.run(["python", os.path.join(os.path.dirname(os.path.dirname(__file__)), "login_signup.py")])
     
     def get_user_info(self, username):
         try:
