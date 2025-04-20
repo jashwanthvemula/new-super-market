@@ -1575,23 +1575,41 @@ class AdminApp:
         report_frame = ctk.CTkFrame(parent_frame, fg_color="white", corner_radius=10)
         report_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Left panel - Options
-        left_panel = ctk.CTkFrame(report_frame, fg_color="white", corner_radius=10,
-                                border_width=1, border_color="#e5e7eb")
-        left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=0)
+        # Get current window dimensions
+        window_width = self.root.winfo_width()
         
-        options_label = ctk.CTkLabel(left_panel, text="Report Options",
+        # Determine layout mode based on window width
+        vertical_layout = window_width < 900
+        
+        # Left panel - Options
+        self.sales_left_panel = ctk.CTkFrame(report_frame, fg_color="white", corner_radius=10,
+                                border_width=1, border_color="#e5e7eb")
+        
+        # Right panel - Preview
+        self.sales_right_panel = ctk.CTkFrame(report_frame, fg_color="#f8fafc", corner_radius=10,
+                                    border_width=1, border_color="#e5e7eb")
+        
+        # Arrange panels based on layout mode
+        if vertical_layout:
+            self.sales_left_panel.pack(side="top", fill="x", pady=(0, 10))
+            self.sales_right_panel.pack(side="top", fill="both", expand=True)
+        else:
+            self.sales_left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=0)
+            self.sales_right_panel.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=0)
+        
+        # Setup left panel content with more compact layout for small screens
+        options_label = ctk.CTkLabel(self.sales_left_panel, text="Report Options",
                                     font=("Arial", 18, "bold"), text_color="#2563eb")
         options_label.pack(anchor="w", padx=20, pady=(15, 10))
         
-        # Date Range
-        date_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
-        date_frame.pack(fill="x", padx=20, pady=10)
+        # Date Range with responsive layout
+        date_frame = ctk.CTkFrame(self.sales_left_panel, fg_color="transparent")
+        date_frame.pack(fill="x", padx=20, pady=5 if vertical_layout else 10)
         
         period_label = ctk.CTkLabel(date_frame, text="Time Period:", font=("Arial", 14), text_color="gray")
         period_label.pack(side="left", padx=(0, 10))
         
-        # Period options
+        # Period options - use wrapping container for small screens
         self.sales_period_var = ctk.StringVar(value="last_30_days")
         
         # Create period radio buttons
@@ -1603,20 +1621,35 @@ class AdminApp:
             ("Custom Range", "custom_range")
         ]
         
-        period_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
-        period_frame.pack(fill="x", padx=20, pady=(0, 10))
+        # Create a special container for period options that can wrap
+        period_container = ctk.CTkFrame(self.sales_left_panel, fg_color="transparent")
+        period_container.pack(fill="x", padx=20, pady=(0, 5))
+        
+        # Use grid layout for better wrapping on small screens
+        row, col = 0, 0
+        max_cols = 3 if vertical_layout else 5
         
         for text, value in periods:
-            radio = ctk.CTkRadioButton(period_frame, text=text, variable=self.sales_period_var, 
+            radio = ctk.CTkRadioButton(period_container, text=text, variable=self.sales_period_var, 
                                     value=value, command=self.toggle_custom_date_range)
-            radio.pack(side="left", padx=(0, 15))
+            radio.grid(row=row, column=col, sticky="w", padx=5, pady=2)
+            
+            # Move to next position
+            col += 1
+            if col >= max_cols:
+                col = 0
+                row += 1
         
         # Custom date range frame (hidden by default)
-        self.custom_date_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
+        self.custom_date_frame = ctk.CTkFrame(self.sales_left_panel, fg_color="transparent")
+        
+        # Create a container for date inputs
+        dates_container = ctk.CTkFrame(self.custom_date_frame, fg_color="transparent")
+        dates_container.pack(fill="x")
         
         # From date
-        from_frame = ctk.CTkFrame(self.custom_date_frame, fg_color="transparent")
-        from_frame.pack(side="left", padx=(20, 10))
+        from_frame = ctk.CTkFrame(dates_container, fg_color="transparent")
+        from_frame.pack(side="left" if not vertical_layout else "top", padx=(20, 10), pady=(0, 5 if vertical_layout else 0))
         
         from_label = ctk.CTkLabel(from_frame, text="From:", font=("Arial", 14), text_color="gray")
         from_label.pack(side="left", padx=(0, 5))
@@ -1626,8 +1659,8 @@ class AdminApp:
         self.sales_from_date.pack(side="left")
         
         # To date
-        to_frame = ctk.CTkFrame(self.custom_date_frame, fg_color="transparent")
-        to_frame.pack(side="left")
+        to_frame = ctk.CTkFrame(dates_container, fg_color="transparent")
+        to_frame.pack(side="left" if not vertical_layout else "top", pady=(0, 5 if vertical_layout else 0))
         
         to_label = ctk.CTkLabel(to_frame, text="To:", font=("Arial", 14), text_color="gray")
         to_label.pack(side="left", padx=(0, 5))
@@ -1636,74 +1669,102 @@ class AdminApp:
                                     width=150, height=30, corner_radius=5)
         self.sales_to_date.pack(side="left")
         
-        # Chart type
-        chart_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
-        chart_frame.pack(fill="x", padx=20, pady=10)
+        # Chart type with responsive layout
+        chart_frame = ctk.CTkFrame(self.sales_left_panel, fg_color="transparent")
+        chart_frame.pack(fill="x", padx=20, pady=5 if vertical_layout else 10)
         
         chart_label = ctk.CTkLabel(chart_frame, text="Chart Type:", font=("Arial", 14), text_color="gray")
         chart_label.pack(side="left", padx=(0, 10))
         
         self.sales_chart_var = ctk.StringVar(value="bar")
         
-        bar_radio = ctk.CTkRadioButton(chart_frame, text="Bar Chart", variable=self.sales_chart_var, value="bar")
-        bar_radio.pack(side="left", padx=(0, 15))
+        # Create chart type options in a wrapping container
+        chart_container = ctk.CTkFrame(self.sales_left_panel, fg_color="transparent")
+        chart_container.pack(fill="x", padx=20, pady=(0, 5))
         
-        line_radio = ctk.CTkRadioButton(chart_frame, text="Line Chart", variable=self.sales_chart_var, value="line")
-        line_radio.pack(side="left", padx=(0, 15))
+        # Use grid for better wrapping on small screens
+        chart_types = [
+            ("Bar Chart", "bar"),
+            ("Line Chart", "line"),
+            ("Pie Chart", "pie")
+        ]
         
-        pie_radio = ctk.CTkRadioButton(chart_frame, text="Pie Chart", variable=self.sales_chart_var, value="pie")
-        pie_radio.pack(side="left")
+        for i, (text, value) in enumerate(chart_types):
+            radio = ctk.CTkRadioButton(chart_container, text=text, variable=self.sales_chart_var, value=value)
+            radio.grid(row=0, column=i, sticky="w", padx=5, pady=2)
         
-        # Report Format
-        format_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
-        format_frame.pack(fill="x", padx=20, pady=10)
+        # Report Format with responsive layout
+        format_frame = ctk.CTkFrame(self.sales_left_panel, fg_color="transparent")
+        format_frame.pack(fill="x", padx=20, pady=5 if vertical_layout else 10)
         
         format_label = ctk.CTkLabel(format_frame, text="Export Format:", font=("Arial", 14), text_color="gray")
         format_label.pack(side="left", padx=(0, 10))
         
         self.sales_format_var = ctk.StringVar(value="csv")
         
-        csv_radio = ctk.CTkRadioButton(format_frame, text="CSV", variable=self.sales_format_var, value="csv")
-        csv_radio.pack(side="left", padx=(0, 15))
+        # Create format options in a wrapping container
+        format_container = ctk.CTkFrame(self.sales_left_panel, fg_color="transparent")
+        format_container.pack(fill="x", padx=20, pady=(0, 5))
         
-        txt_radio = ctk.CTkRadioButton(format_frame, text="Text", variable=self.sales_format_var, value="txt")
-        txt_radio.pack(side="left", padx=(0, 15))
+        # Use grid for better wrapping on small screens
+        formats = [
+            ("CSV", "csv"),
+            ("Text", "txt"),
+            ("PDF", "pdf")
+        ]
         
-        pdf_radio = ctk.CTkRadioButton(format_frame, text="PDF", variable=self.sales_format_var, value="pdf")
-        pdf_radio.pack(side="left")
+        for i, (text, value) in enumerate(formats):
+            radio = ctk.CTkRadioButton(format_container, text=text, variable=self.sales_format_var, value=value)
+            radio.grid(row=0, column=i, sticky="w", padx=5, pady=2)
         
-        # Buttons frame
-        buttons_frame = ctk.CTkFrame(left_panel, fg_color="transparent")
-        buttons_frame.pack(fill="x", padx=20, pady=(20, 10))
+        # Buttons frame with responsive layout
+        buttons_frame = ctk.CTkFrame(self.sales_left_panel, fg_color="transparent")
+        buttons_frame.pack(fill="x", padx=20, pady=(10, 10))
+        
+        # Create a container that can wrap buttons on small screens
+        button_container = ctk.CTkFrame(buttons_frame, fg_color="transparent")
+        button_container.pack(fill="x")
+        
+        # Use grid for better button arrangement on small screens
+        row, col = 0, 0
+        max_cols = 1 if vertical_layout else 3
+        button_width = 150 if not vertical_layout else 180
         
         # Generate Report Button
-        generate_btn = ctk.CTkButton(buttons_frame, text="Generate Report",
+        generate_btn = ctk.CTkButton(button_container, text="Generate Report",
                                     fg_color="#10b981", hover_color="#059669",
-                                    font=("Arial", 14), height=40, width=150,
+                                    font=("Arial", 14), height=40, width=button_width,
                                     command=self.generate_sales_report)
-        generate_btn.pack(side="left", padx=(0, 10))
+        generate_btn.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+        
+        # Move to next position
+        col += 1
+        if col >= max_cols:
+            col = 0
+            row += 1
         
         # Preview Button
-        self.preview_graph_btn = ctk.CTkButton(buttons_frame, text="Preview Graph",
+        self.preview_graph_btn = ctk.CTkButton(button_container, text="Preview Graph",
                                         fg_color="#3b82f6", hover_color="#2563eb",
-                                        font=("Arial", 14), height=40, width=150,
+                                        font=("Arial", 14), height=40, width=button_width,
                                         command=self.preview_sales_graph)
-        self.preview_graph_btn.pack(side="left", padx=(0, 10))
+        self.preview_graph_btn.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+        
+        # Move to next position
+        col += 1
+        if col >= max_cols:
+            col = 0
+            row += 1
         
         # Download Button (disabled until report is generated)
-        self.sales_download_btn = ctk.CTkButton(buttons_frame, text="Download Report",
+        self.sales_download_btn = ctk.CTkButton(button_container, text="Download Report",
                                         fg_color="#6366f1", hover_color="#4f46e5",
-                                        font=("Arial", 14), height=40, width=150,
+                                        font=("Arial", 14), height=40, width=button_width,
                                         state="disabled", command=self.download_sales_report)
-        self.sales_download_btn.pack(side="left")
+        self.sales_download_btn.grid(row=row, column=col, padx=5, pady=5, sticky="w")
         
-        # Right panel - Preview
-        self.right_panel = ctk.CTkFrame(report_frame, fg_color="#f8fafc", corner_radius=10,
-                                    border_width=1, border_color="#e5e7eb")
-        self.right_panel.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=0)
-        
-        # Preview header
-        preview_header = ctk.CTkFrame(self.right_panel, fg_color="transparent")
+        # Preview header with responsive layout
+        preview_header = ctk.CTkFrame(self.sales_right_panel, fg_color="transparent")
         preview_header.pack(fill="x", padx=20, pady=(15, 5))
         
         preview_label = ctk.CTkLabel(preview_header, text="Report Preview",
@@ -1711,7 +1772,7 @@ class AdminApp:
         preview_label.pack(side="left")
         
         # Tab view for switching between graph and text preview
-        self.preview_tabs = ctk.CTkTabview(self.right_panel, corner_radius=5)
+        self.preview_tabs = ctk.CTkTabview(self.sales_right_panel, corner_radius=5)
         self.preview_tabs.pack(fill="both", expand=True, padx=20, pady=(5, 20))
         
         self.graph_tab = self.preview_tabs.add("Graph View")
@@ -1727,15 +1788,13 @@ class AdminApp:
         self.graph_message.pack(expand=True)
         
         # Text preview area
-        self.sales_preview = ctk.CTkTextbox(self.text_tab, fg_color="white", corner_radius=5,
-                                    width=800, height=300)
+        self.sales_preview = ctk.CTkTextbox(self.text_tab, fg_color="white", corner_radius=5)
         self.sales_preview.pack(fill="both", expand=True, padx=10, pady=10)
         self.sales_preview.insert("1.0", "Report preview will appear here. Generate a report to see data.")
         
         # Store report data for graph and download
         self.sales_report_data = None
         self.sales_data = None
-
     def setup_inventory_report_tab(self, parent_frame):
         # Main frame with two panels
         report_frame = ctk.CTkFrame(parent_frame, fg_color="white", corner_radius=10)
