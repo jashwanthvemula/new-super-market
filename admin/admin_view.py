@@ -1451,3 +1451,36 @@ class AdminApp:
             if connection and connection.is_connected():
                 cursor.close()
                 connection.close()
+if __name__ == "__main__":
+    ctk.set_appearance_mode("light")
+    ctk.set_default_color_theme("blue")
+    
+    root = ctk.CTk()
+    
+    # Check if username was provided from command line
+    login_mode = False
+    if len(sys.argv) > 1:
+        if sys.argv[1] == "login":
+            login_mode = True
+            print("Starting in login mode")  # Debug message
+        else:
+            username = sys.argv[1]
+            print(f"Starting with username: {username}")  # Debug message
+    else:
+        # Try to read from file
+        username, role = read_login_file()
+        if not username or role != "admin":
+            login_mode = True
+            print("No valid admin credentials found, starting in login mode")  # Debug message
+    
+    # Print debugging information
+    print(f"Admin view starting with login_mode={login_mode}")
+    
+    try:
+        app = AdminApp(root, None if login_mode else username)
+        root.mainloop()
+    except Exception as e:
+        print(f"Error starting AdminApp: {e}")
+        # If running in GUI mode, show error dialog
+        if 'root' in locals() and root:
+            messagebox.showerror("Error", f"Failed to start admin panel: {e}")
