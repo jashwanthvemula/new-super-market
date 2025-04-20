@@ -576,7 +576,7 @@ class UserApp:
                     }
                     
                     # Create UI element
-                    self.create_cart_item_display(product_name, product_price, 1)
+                    self.create_cart_item_display(product_name, product_price, quantity)
                 
                 # Commit changes
                 connection.commit()
@@ -597,10 +597,78 @@ class UserApp:
         self.update_cart_total()
         
         # Confirmation message
-        messagebox.showinfo("Added to Cart", f"{product_name} has been added to your cart!")
-    
-    def remove_from_cart(self, product_name):
-        # Remove from database
+        messagebox.showinfo("Added to Cart", f"{quantity} x {product_name} has been added to your cart!")
+    def update_cart_total(self):
+        total = sum(item["raw_price"] * item["quantity"] for item in self.cart_items.values())
+        self.total_amount = total
+        self.total_label.configure(text=f"Total: ${total:.2f}")
+        
+        # Update the checkout button state
+        if total > 0:
+            self.checkout_btn.configure(state="normal")
+        else:
+            self.checkout_btn.configure(state="disabled")
+    def create_cart_item_display(self, product_name, product_price, quantity, product_id):
+        # Create a frame for this cart item
+        item_frame = ctk.CTkFrame(self.cart_container, fg_color="white", corner_radius=5, height=40)
+        item_frame.pack(fill="x", padx=10, pady=5)
+        
+        # Product name (left)
+        name_label = ctk.CTkLabel(item_frame, text=product_name, 
+                                font=("Arial", 14), text_color="black")
+        name_label.pack(side="left", padx=10, pady=10)
+        
+        # Product price (center)
+        price_label = ctk.CTkLabel(item_frame, text=product_price, 
+                                font=("Arial", 14), text_color="black")
+        price_label.pack(side="left", padx=10, pady=10)
+        
+        # Quantity control frame (with - and + buttons)
+        qty_control_frame = ctk.CTkFrame(item_frame, fg_color="white")
+        qty_control_frame.pack(side="left", padx=10, pady=10)
+        
+        # Decrease quantity button
+        decrease_btn = ctk.CTkButton(
+            qty_control_frame, text="-", width=25, height=25,
+            fg_color="#d1d5db", hover_color="#9ca3af", text_color="black",
+            command=lambda name=product_name, id=product_id, q=quantity-1: 
+                self.update_cart_item_quantity(name, id, q)
+        )
+        decrease_btn.pack(side="left")
+        
+        # Quantity (center)
+        quantity_label = ctk.CTkLabel(qty_control_frame, text=f"Qty: {quantity}", 
+                                    font=("Arial", 14), text_color="black", width=60)
+        quantity_label.pack(side="left", padx=5)
+        
+        # Increase quantity button
+        increase_btn = ctk.CTkButton(
+            qty_control_frame, text="+", width=25, height=25,
+            fg_color="#d1d5db", hover_color="#9ca3af", text_color="black",
+            command=lambda name=product_name, id=product_id, q=quantity+1: 
+                self.update_cart_item_quantity(name, id, q)
+        )
+        increase_btn.pack(side="left")
+        
+        # Remove button (far right)
+        remove_btn = ctk.CTkButton(item_frame, text="Remove", 
+                                fg_color="#ef4444", hover_color="#dc2626", 
+                                font=("Arial", 12), width=80, height=30,
+                                command=lambda p=product_name: self.remove_from_cart(p))
+        remove_btn.pack(side="right", padx=10, pady=10)
+        
+        # Store references
+        self.cart_item_frames[product_name] = {
+            "frame": item_frame,
+            "quantity_label": quantity_label
+        }
+    def update_cart_item_quantity(self, product_name, product_id, new_quantity):
+        if new_quantity <= 0:
+            # If quantity is 0 or negative, remove the item
+            self.remove_from_cart(product_name)
+            return
+        
+        # Update in database
         if self.current_user["user_id"] and product_name in self.cart_items:
             try:
                 connection = connect_db()
