@@ -1291,28 +1291,35 @@ class AdminApp:
         # Create action buttons frame
         action_frame = ctk.CTkFrame(manage_users_frame, fg_color="transparent")
         action_frame.pack(fill="x", padx=20, pady=10)
-        
+
         # Edit button
         edit_btn = ctk.CTkButton(action_frame, text="Edit Selected", 
                             fg_color="#eab308", hover_color="#ca8a04",
                             font=("Arial", 14), height=40, width=150,
                             command=lambda: self.open_edit_user_dialog(None))
         edit_btn.pack(side="left", padx=(0, 10))
-        
+
         # Delete button
         delete_btn = ctk.CTkButton(action_frame, text="Delete Selected", 
                                 fg_color="#ef4444", hover_color="#dc2626",
                                 font=("Arial", 14), height=40, width=150,
                                 command=self.delete_selected_user)
         delete_btn.pack(side="left", padx=(0, 10))
-        
+
+        # Add this Toggle Status button here:
+        toggle_status_btn = ctk.CTkButton(action_frame, text="Toggle Status", 
+                                        fg_color="#8b5cf6", hover_color="#7c3aed",
+                                        font=("Arial", 14), height=40, width=150,
+                                        command=self.toggle_user_status)
+        toggle_status_btn.pack(side="left", padx=(0, 10))
+
         # Reset Password button
         reset_btn = ctk.CTkButton(action_frame, text="Reset Password", 
                                 fg_color="#3b82f6", hover_color="#2563eb",
                                 font=("Arial", 14), height=40, width=150,
                                 command=self.reset_selected_password)
         reset_btn.pack(side="left")
-        
+
         # Refresh button
         refresh_btn = ctk.CTkButton(action_frame, text="Refresh", 
                                 fg_color="#10b981", hover_color="#059669",
