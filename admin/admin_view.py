@@ -1099,7 +1099,7 @@ class AdminApp:
                 connection.close()
     def show_user_management(self):
         self.clear_content_frame()
-        self.current_view = "users"  # Add this line to set current view
+        self.current_view = "users"  # Set current view for resize handling
         
         # Header
         header_label = ctk.CTkLabel(self.content_frame, text="User Management",
@@ -1135,7 +1135,7 @@ class AdminApp:
         first_name_label.pack(side="left", padx=(0, 10))
         
         self.first_name_entry = ctk.CTkEntry(first_name_frame, placeholder_text="Enter first name",
-                                         height=40, corner_radius=5)
+                                        height=40, corner_radius=5)
         self.first_name_entry.pack(side="left", fill="x", expand=True)
         
         # Last Name Entry - Row 2
@@ -1157,7 +1157,7 @@ class AdminApp:
         email_label.pack(side="left", padx=(0, 10))
         
         self.email_entry = ctk.CTkEntry(email_frame, placeholder_text="Enter email address",
-                                     height=40, corner_radius=5)
+                                    height=40, corner_radius=5)
         self.email_entry.pack(side="left", fill="x", expand=True)
         
         # Role Selection - Row 4
@@ -1188,7 +1188,7 @@ class AdminApp:
         
         # Password note
         password_note = ctk.CTkLabel(form_frame, text="Note: If left blank, the default password will be 'password123'",
-                                   font=("Arial", 12), text_color="gray")
+                                font=("Arial", 12), text_color="gray")
         password_note.pack(anchor="w", pady=(5, 15))
         
         # Buttons frame
@@ -1197,9 +1197,9 @@ class AdminApp:
         
         # Add User Button
         self.add_user_btn = ctk.CTkButton(buttons_frame, text="Add User",
-                                     fg_color="#10b981", hover_color="#059669",
-                                     font=("Arial", 14), height=40, width=150,
-                                     command=self.handle_add_user)
+                                    fg_color="#10b981", hover_color="#059669",
+                                    font=("Arial", 14), height=40, width=150,
+                                    command=self.handle_add_user)
         self.add_user_btn.pack(side="left", padx=(0, 10))
         
         # Clear Form Button
@@ -1215,7 +1215,7 @@ class AdminApp:
         manage_users_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
         users_label = ctk.CTkLabel(manage_users_frame, text="Existing Users",
-                                 font=("Arial", 18, "bold"), text_color="#2563eb")
+                                font=("Arial", 18, "bold"), text_color="#2563eb")
         users_label.pack(anchor="w", padx=20, pady=(15, 20))
         
         # Search frame
@@ -1223,80 +1223,85 @@ class AdminApp:
         search_frame.pack(fill="x", padx=20, pady=(0, 10))
         
         self.user_search = ctk.CTkEntry(search_frame, placeholder_text="Search users by name or email...",
-                                  height=35, width=300, corner_radius=5)
+                                height=35, width=300, corner_radius=5)
         self.user_search.pack(side="left", padx=(0, 10))
         
         search_btn = ctk.CTkButton(search_frame, text="Search",
-                                 fg_color="#3b82f6", hover_color="#2563eb",
-                                 font=("Arial", 14), height=35, width=80,
-                                 command=self.search_users)
+                                fg_color="#3b82f6", hover_color="#2563eb",
+                                font=("Arial", 14), height=35, width=80,
+                                command=self.search_users)
         search_btn.pack(side="left")
         
-        # Create a custom style for the treeview
+        # Create a custom style for the treeview with improved visibility
         style = ttk.Style()
         style.configure("Treeview", 
                         background="white",
+                        foreground="black",
                         fieldbackground="white", 
                         rowheight=40)
         style.configure("Treeview.Heading", 
                         font=('Arial', 12, 'bold'),
                         background="#f8fafc", 
                         foreground="black")
-        style.map('Treeview', background=[('selected', '#e5e7eb')])
+        style.map('Treeview', 
+                background=[('selected', '#e5e7eb')],
+                foreground=[('selected', 'black')])
         
         # Create a frame for the table
         table_frame = ctk.CTkFrame(manage_users_frame, fg_color="#f8fafc", corner_radius=10)
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
         # Create columns
-        columns = ("name", "email", "role", "status", "actions")
+        columns = ("name", "email", "role", "actions")
         
-        # Create treeview
-        self.users_table = ttk.Treeview(table_frame, columns=columns, show="headings")
+        # Create treeview with explicit height
+        self.users_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
         
         # Define headings
         self.users_table.heading("name", text="Name")
         self.users_table.heading("email", text="Email")
         self.users_table.heading("role", text="Role")
-        self.users_table.heading("status", text="Status")
         self.users_table.heading("actions", text="Actions")
         
         # Define column widths and alignment
         self.users_table.column("name", width=200, anchor="w")
-        self.users_table.column("email", width=200, anchor="w")
-        self.users_table.column("role", width=80, anchor="center")
-        self.users_table.column("status", width=80, anchor="center")
+        self.users_table.column("email", width=250, anchor="w")
+        self.users_table.column("role", width=100, anchor="center")
         self.users_table.column("actions", width=200, anchor="center")
         
-        # Modify action buttons to include Toggle Status
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.users_table.yview)
+        self.users_table.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack scrollbar first, then the treeview
+        scrollbar.pack(side="right", fill="y")
+        self.users_table.pack(side="left", fill="both", expand=True)
+        
+        # Bind double-click event for editing
+        self.users_table.bind("<Double-1>", self.open_edit_user_dialog)
+        
+        # Create action buttons frame
         action_frame = ctk.CTkFrame(manage_users_frame, fg_color="transparent")
         action_frame.pack(fill="x", padx=20, pady=10)
         
         # Edit button
         edit_btn = ctk.CTkButton(action_frame, text="Edit Selected", 
                             fg_color="#eab308", hover_color="#ca8a04",
-                            font=("Arial", 14), height=40, width=120,
+                            font=("Arial", 14), height=40, width=150,
                             command=lambda: self.open_edit_user_dialog(None))
         edit_btn.pack(side="left", padx=(0, 10))
-        
-        # Toggle Status button (new)
-        toggle_status_btn = ctk.CTkButton(action_frame, text="Toggle Status", 
-                                    fg_color="#8b5cf6", hover_color="#7c3aed",
-                                    font=("Arial", 14), height=40, width=120,
-                                    command=self.toggle_user_status)
-        toggle_status_btn.pack(side="left", padx=(0, 10))
         
         # Delete button
         delete_btn = ctk.CTkButton(action_frame, text="Delete Selected", 
                                 fg_color="#ef4444", hover_color="#dc2626",
-                                font=("Arial", 14), height=40, width=120,
+                                font=("Arial", 14), height=40, width=150,
                                 command=self.delete_selected_user)
         delete_btn.pack(side="left", padx=(0, 10))
         
         # Reset Password button
         reset_btn = ctk.CTkButton(action_frame, text="Reset Password", 
                                 fg_color="#3b82f6", hover_color="#2563eb",
-                                font=("Arial", 14), height=40, width=120,
+                                font=("Arial", 14), height=40, width=150,
                                 command=self.reset_selected_password)
         reset_btn.pack(side="left")
         
@@ -1307,7 +1312,74 @@ class AdminApp:
                                 command=self.refresh_users_table)
         refresh_btn.pack(side="right")
         
-        # Populate users table
+        # Add a debug button
+        debug_frame = ctk.CTkFrame(manage_users_frame, fg_color="transparent")
+        debug_frame.pack(fill="x", padx=20, pady=(10, 0))
+        
+        debug_btn = ctk.CTkButton(debug_frame, text="Test Display", 
+                            fg_color="#6366f1", hover_color="#4f46e5",
+                            font=("Arial", 14), height=35, width=150,
+                            command=self.test_users_display)
+        debug_btn.pack(side="left")
+        
+        # Add test function for debugging
+        def test_users_display(self):
+            """Test function to directly add users to the table"""
+            try:
+                # Clear the table
+                for item in self.users_table.get_children():
+                    self.users_table.delete(item)
+                
+                # Add test entries directly to the table
+                self.users_table.insert("", "end", values=("Admin User", "admin@supermarket.com", "Admin", ""), tags=("1",))
+                self.users_table.insert("", "end", values=("John Doe", "user1@example.com", "User", ""), tags=("2",))
+                self.users_table.insert("", "end", values=("Test User", "test@example.com", "User", ""), tags=("3",))
+                
+                messagebox.showinfo("Test", "Added test users to the table")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to add test users: {str(e)}")
+                print(f"Error in test_users_display: {str(e)}")
+        
+        # Assign the method to the class
+        self.test_users_display = test_users_display.__get__(self, self.__class__)
+        
+        # Now update the refresh_users_table method to properly handle your data
+        def updated_refresh_users_table(self, search_term=None):
+            """Updated method to properly display users in the table"""
+            # Clear existing items
+            for item in self.users_table.get_children():
+                self.users_table.delete(item)
+            
+            # Fetch and display users
+            users = self.fetch_users(search_term)
+            print(f"Got {len(users)} users to display")
+            
+            # Add each user with error handling
+            for user in users:
+                try:
+                    # Extract values from your data structure
+                    user_id = user["user_id"]
+                    full_name = f"{user['first_name']} {user['last_name']}"
+                    email = user["email"]
+                    role = user["role"].capitalize()
+                    
+                    # Insert with your exact data structure
+                    self.users_table.insert(
+                        "", "end", 
+                        values=(full_name, email, role, ""),
+                        tags=(str(user_id),)
+                    )
+                except Exception as e:
+                    print(f"Error adding user {user.get('user_id')}: {str(e)}")
+            
+            # Print how many items were added
+            items = self.users_table.get_children()
+            print(f"Table now has {len(items)} rows")
+        
+        # Replace the original method with the improved version
+        self.refresh_users_table = updated_refresh_users_table.__get__(self, self.__class__)
+        
+        # Populate users table on startup
         self.refresh_users_table()
     def toggle_user_status(self):
         """Toggle a user's status between active and inactive"""
@@ -1366,31 +1438,50 @@ class AdminApp:
                 connection.close()
 
     def refresh_users_table(self, search_term=None):
-        """Refresh the users table with current data"""
+        """Refresh the users table with data from the database"""
+        print("Refreshing users table")  # Debug print
+        
         # Clear existing items
         for item in self.users_table.get_children():
             self.users_table.delete(item)
         
         # Fetch and display users
         users = self.fetch_users(search_term)
+        print(f"Got {len(users)} users to display")
         
+        # Process each user
         for user in users:
-            user_id = user["user_id"]
-            full_name = f"{user['first_name']} {user['last_name']}"
-            email = user.get("email", user["username"])
-            if "@" not in email and email:
-                email = f"{email}@example.com"  # Add domain if missing
-            role = user["role"].capitalize()
-            status = user.get("status", "active").capitalize()  # Get status with default
-            
-            # Set row color based on status
-            tag = "inactive" if status.lower() != "active" else ""
-            
-            self.users_table.insert("", "end", values=(full_name, email, role, status, ""), 
-                                tags=(str(user_id), tag))
+            try:
+                # Extract user data
+                user_id = user["user_id"] 
+                full_name = f"{user['first_name']} {user['last_name']}"
+                email = user["email"]
+                role = user["role"].capitalize()
+                
+                # Debug print
+                print(f"Adding user to table: {full_name}, {email}, {role}")
+                
+                # Insert into table
+                item_id = self.users_table.insert(
+                    "", "end",  # parent and index
+                    values=(full_name, email, role, ""),  # values for each column
+                    tags=(str(user_id),)  # tag for identifying the row later
+                )
+                
+                print(f"Added user {full_name} with item_id: {item_id}")
+                
+            except Exception as e:
+                # Print any errors but continue processing other users
+                print(f"Error adding user {user.get('user_id', 'unknown')}: {str(e)}")
+                import traceback
+                traceback.print_exc()
         
-        # Configure tag colors
-        self.users_table.tag_configure("inactive", background="#f1f5f9")
+        # Debug: Show how many items are now in the table
+        items = self.users_table.get_children()
+        print(f"Table now has {len(items)} rows after refresh")
+        
+        # Make sure table is visible and update display
+        self.users_table.update()
 
     def fetch_users(self, search_term=None):
         """Fetch users from database with optional search filter"""
@@ -1699,18 +1790,6 @@ class AdminApp:
         debug_note.pack(side="left", padx=(10, 0))
 
 
-    def search_users(self):
-        """Search users based on input text"""
-        search_term = self.user_search.get().strip()
-        
-        if not search_term:
-            # If search field is empty, show all users
-            self.refresh_users_table()
-            return
-        
-        # Refresh the table with search results
-        self.refresh_users_table(search_term)
-    
     # def search_users(self):
     #     """Search users based on input text"""
     #     search_term = self.user_search.get().strip()
@@ -1720,38 +1799,50 @@ class AdminApp:
     #         self.refresh_users_table()
     #         return
         
-    #     # Clear existing items in the table
-    #     for item in self.users_table.get_children():
-    #         self.users_table.delete(item)
+    #     # Refresh the table with search results
+    #     self.refresh_users_table(search_term)
+    
+    def search_users(self):
+        """Search users based on input text"""
+        search_term = self.user_search.get().strip()
         
-    #     # Fetch and display users matching the search term
-    #     users = self.fetch_users(search_term)
+        if not search_term:
+            # If search field is empty, show all users
+            self.refresh_users_table()
+            return
         
-    #     if not users:
-    #         # No users found - show a message
-    #         messagebox.showinfo("Search Results", "No users found matching your search criteria.")
-    #         # Reset to show all users
-    #         self.refresh_users_table()
-    #         return
+        # Clear existing items in the table
+        for item in self.users_table.get_children():
+            self.users_table.delete(item)
         
-    #     # Display the filtered users
-    #     for user in users:
-    #         user_id = user["user_id"]
-    #         full_name = f"{user['first_name']} {user['last_name']}"
-    #         email = user.get("email", user["username"])
-    #         if "@" not in email and email:
-    #             email = f"{email}@example.com"  # Add domain if missing
-    #         role = user["role"].capitalize()
-    #         status = user.get("status", "active").capitalize()  # Get status with default
+        # Fetch and display users matching the search term
+        users = self.fetch_users(search_term)
+        
+        if not users:
+            # No users found - show a message
+            messagebox.showinfo("Search Results", "No users found matching your search criteria.")
+            # Reset to show all users
+            self.refresh_users_table()
+            return
+        
+        # Display the filtered users
+        for user in users:
+            user_id = user["user_id"]
+            full_name = f"{user['first_name']} {user['last_name']}"
+            email = user.get("email", user["username"])
+            if "@" not in email and email:
+                email = f"{email}@example.com"  # Add domain if missing
+            role = user["role"].capitalize()
+            status = user.get("status", "active").capitalize()  # Get status with default
             
-    #         # Set row color based on status
-    #         tag = "inactive" if status.lower() != "active" else ""
+            # Set row color based on status
+            tag = "inactive" if status.lower() != "active" else ""
             
-    #         self.users_table.insert("", "end", values=(full_name, email, role, status, ""), 
-    #                             tags=(str(user_id), tag))
+            self.users_table.insert("", "end", values=(full_name, email, role, status, ""), 
+                                tags=(str(user_id), tag))
         
-    #     # Configure tag colors
-    #     self.users_table.tag_configure("inactive", background="#f1f5f9")
+        # Configure tag colors
+        self.users_table.tag_configure("inactive", background="#f1f5f9")
         
     def refresh_users_table(self, search_term=None):
         """Refresh the users table with current data"""
