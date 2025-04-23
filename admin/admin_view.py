@@ -1309,6 +1309,141 @@ class AdminApp:
         
         # Populate users table
         self.refresh_users_table()
+    def toggle_user_status(self):
+        """Toggle a user's status between active and inactive"""
+        selected_items = self.users_table.selection()
+        if not selected_items:
+            messagebox.showinfo("Info", "Please select a user.")
+            return
+        
+        item = selected_items[0]
+        values = self.users_table.item(item, 'values')
+        
+        if not values:
+            return
+        
+        # Get user ID from tag
+        user_id = int(self.users_table.item(item, 'tags')[0])
+        user_name = values[0]
+        current_status = values[3].lower()
+        
+        # Check if user is trying to disable themselves
+        if user_id == self.current_user["user_id"]:
+            messagebox.showwarning("Cannot Disable", "You cannot disable your own account while logged in.")
+            return
+        
+        # Confirm action
+        new_status = "inactive" if current_status == "active" else "active"
+        action = "disable" if current_status == "active" else "enable"
+        
+        confirm = messagebox.askyesno("Confirm Action", f"Are you sure you want to {action} '{user_name}'?")
+        if not confirm:
+            return
+        
+        # Update user status
+        if self.update_user_status(user_id, new_status):
+            messagebox.showinfo("Success", f"User '{user_name}' has been {action}d.")
+            self.refresh_users_table()
+    def update_user_status(self, user_id, status):
+        """Update user status in database"""
+        try:
+            connection = connect_db()
+            cursor = connection.cursor()
+            
+            cursor.execute(
+                "UPDATE Users SET status = %s WHERE user_id = %s",
+                (status, user_id)
+            )
+            
+            connection.commit()
+            return True
+        except Exception as err:
+            messagebox.showerror("Database Error", str(err))
+            return False
+        finally:
+            if connection and connection.is_connected():
+                cursor.close()
+                connection.close()
+
+    def refresh_users_table(self, search_term=None):
+        """Refresh the users table with current data"""
+        # Clear existing items
+        for item in self.users_table.get_children():
+            self.users_table.delete(item)
+        
+        # Fetch and display users
+        users = self.fetch_users(search_term)
+        
+        for user in users:
+            user_id = user["user_id"]
+            full_name = f"{user['first_name']} {user['last_name']}"
+            email = user.get("email", user["username"])
+            if "@" not in email and email:
+                email = f"{email}@example.com"  # Add domain if missing
+            role = user["role"].capitalize()
+            status = user.get("status", "active").capitalize()  # Get status with default
+            
+            # Set row color based on status
+            tag = "inactive" if status.lower() != "active" else ""
+            
+            self.users_table.insert("", "end", values=(full_name, email, role, status, ""), 
+                                tags=(str(user_id), tag))
+        
+        # Configure tag colors
+        self.users_table.tag_configure("inactive", background="#f1f5f9")
+
+    def fetch_users(self, search_term=None):
+        """Fetch users from database with optional search filter"""
+        try:
+            connection = connect_db()
+            cursor = connection.cursor(dictionary=True)
+            
+            if search_term:
+                # Add wildcard characters to the search term for partial matching
+                search_pattern = f"%{search_term}%"
+                
+                # Search through first name, last name, username, and email
+                cursor.execute(
+                    """
+                    SELECT user_id, first_name, last_name, username, email, role, status 
+                    FROM Users 
+                    WHERE first_name LIKE %s OR last_name LIKE %s 
+                    OR username LIKE %s OR email LIKE %s
+                    ORDER BY role, first_name, last_name
+                    """,
+                    (search_pattern, search_pattern, search_pattern, search_pattern)
+                )
+            else:
+                cursor.execute(
+                    """
+                    SELECT user_id, first_name, last_name, username, email, role, status 
+                    FROM Users 
+                    ORDER BY role, first_name, last_name
+                    """
+                )
+            
+            users = cursor.fetchall()
+            return users
+        except Exception as err:
+            print(f"Error fetching users: {err}")  # Add print for debugging
+            messagebox.showerror("Database Error", str(err))
+            return []
+        finally:
+            if connection and connection.is_connected():
+                cursor.close()
+                connection.close()
+
+    def search_users(self):
+        """Search users based on input text"""
+        search_term = self.user_search.get().strip()
+        
+        if not search_term:
+            # If search field is empty, show all users
+            self.refresh_users_table()
+            return
+        
+        # Refresh the table with search results
+        self.refresh_users_table(search_term)
     def update_user_search_frame(self, manage_users_frame):
         """Create an improved search frame for user management"""
         # Search frame with better UI
@@ -1357,6 +1492,7 @@ class AdminApp:
             self.user_search.delete(0, 'end')
             self.refresh_users_table()
     def fetch_users(self, search_term=None):
+        """Fetch users from database with optional search filter"""
         try:
             connection = connect_db()
             cursor = connection.cursor(dictionary=True)
@@ -1443,63 +1579,63 @@ class AdminApp:
         
         return self.users_table
     def debug_user_search(self):
-    """Debugging helper for user search functionality"""
-    search_term = self.user_search.get().strip()
-    print(f"Debug: Searching for users with term: '{search_term}'")
-    
-    try:
-        connection = connect_db()
-        cursor = connection.cursor(dictionary=True)
+        """Debugging helper for user search functionality"""
+        search_term = self.user_search.get().strip()
+        print(f"Debug: Searching for users with term: '{search_term}'")
         
-        # Test database connection
-        print("Debug: Testing database connection...")
-        if not connection or not connection.is_connected():
-            print("Debug: Failed to connect to database")
-            return
-        print("Debug: Database connection successful")
-        
-        # Get total users count (sanity check)
-        cursor.execute("SELECT COUNT(*) as count FROM Users")
-        total_count = cursor.fetchone()["count"]
-        print(f"Debug: Total users in database: {total_count}")
-        
-        if search_term:
-            # Add wildcard characters to the search term for partial matching
-            search_pattern = f"%{search_term}%"
+        try:
+            connection = connect_db()
+            cursor = connection.cursor(dictionary=True)
             
-            # Test search query
-            print(f"Debug: Testing search with pattern: '{search_pattern}'")
-            query = """
-                SELECT user_id, first_name, last_name, username, email, role, status 
-                FROM Users 
-                WHERE first_name LIKE %s OR last_name LIKE %s 
-                   OR username LIKE %s OR email LIKE %s
-                ORDER BY role, first_name, last_name
-            """
+            # Test database connection
+            print("Debug: Testing database connection...")
+            if not connection or not connection.is_connected():
+                print("Debug: Failed to connect to database")
+                return
+            print("Debug: Database connection successful")
             
-            print(f"Debug: Executing query: {query}")
-            cursor.execute(query, (search_pattern, search_pattern, search_pattern, search_pattern))
+            # Get total users count (sanity check)
+            cursor.execute("SELECT COUNT(*) as count FROM Users")
+            total_count = cursor.fetchone()["count"]
+            print(f"Debug: Total users in database: {total_count}")
             
-            users = cursor.fetchall()
-            print(f"Debug: Found {len(users)} users matching the search criteria")
+            if search_term:
+                # Add wildcard characters to the search term for partial matching
+                search_pattern = f"%{search_term}%"
+                
+                # Test search query
+                print(f"Debug: Testing search with pattern: '{search_pattern}'")
+                query = """
+                    SELECT user_id, first_name, last_name, username, email, role, status 
+                    FROM Users 
+                    WHERE first_name LIKE %s OR last_name LIKE %s 
+                    OR username LIKE %s OR email LIKE %s
+                    ORDER BY role, first_name, last_name
+                """
+                
+                print(f"Debug: Executing query: {query}")
+                cursor.execute(query, (search_pattern, search_pattern, search_pattern, search_pattern))
+                
+                users = cursor.fetchall()
+                print(f"Debug: Found {len(users)} users matching the search criteria")
+                
+                # Print out each matching user (with sensitive info redacted)
+                for i, user in enumerate(users):
+                    print(f"Debug: User {i+1}:")
+                    print(f"  - ID: {user['user_id']}")
+                    print(f"  - Name: {user['first_name']} {user['last_name']}")
+                    print(f"  - Username: {user['username']}")
+                    print(f"  - Role: {user['role']}")
+                    print(f"  - Status: {user.get('status', 'active')}")
             
-            # Print out each matching user (with sensitive info redacted)
-            for i, user in enumerate(users):
-                print(f"Debug: User {i+1}:")
-                print(f"  - ID: {user['user_id']}")
-                print(f"  - Name: {user['first_name']} {user['last_name']}")
-                print(f"  - Username: {user['username']}")
-                print(f"  - Role: {user['role']}")
-                print(f"  - Status: {user.get('status', 'active')}")
-        
-        print("Debug: User search debugging completed")
-        
-    except Exception as err:
-        print(f"Debug ERROR: {err}")
-    finally:
-        if connection and connection.is_connected():
-            cursor.close()
-            connection.close()
+            print("Debug: User search debugging completed")
+            
+        except Exception as err:
+            print(f"Debug ERROR: {err}")
+        finally:
+            if connection and connection.is_connected():
+                cursor.close()
+                connection.close()
 
     def repair_user_table(self):
         """Fix common issues with user table structure"""
@@ -1562,7 +1698,7 @@ class AdminApp:
                             font=("Arial", 10), text_color="gray")
         debug_note.pack(side="left", padx=(10, 0))
 
-    
+
     def search_users(self):
         """Search users based on input text"""
         search_term = self.user_search.get().strip()
@@ -1572,21 +1708,60 @@ class AdminApp:
             self.refresh_users_table()
             return
         
-        # Clear existing items in the table
+        # Refresh the table with search results
+        self.refresh_users_table(search_term)
+    
+    # def search_users(self):
+    #     """Search users based on input text"""
+    #     search_term = self.user_search.get().strip()
+        
+    #     if not search_term:
+    #         # If search field is empty, show all users
+    #         self.refresh_users_table()
+    #         return
+        
+    #     # Clear existing items in the table
+    #     for item in self.users_table.get_children():
+    #         self.users_table.delete(item)
+        
+    #     # Fetch and display users matching the search term
+    #     users = self.fetch_users(search_term)
+        
+    #     if not users:
+    #         # No users found - show a message
+    #         messagebox.showinfo("Search Results", "No users found matching your search criteria.")
+    #         # Reset to show all users
+    #         self.refresh_users_table()
+    #         return
+        
+    #     # Display the filtered users
+    #     for user in users:
+    #         user_id = user["user_id"]
+    #         full_name = f"{user['first_name']} {user['last_name']}"
+    #         email = user.get("email", user["username"])
+    #         if "@" not in email and email:
+    #             email = f"{email}@example.com"  # Add domain if missing
+    #         role = user["role"].capitalize()
+    #         status = user.get("status", "active").capitalize()  # Get status with default
+            
+    #         # Set row color based on status
+    #         tag = "inactive" if status.lower() != "active" else ""
+            
+    #         self.users_table.insert("", "end", values=(full_name, email, role, status, ""), 
+    #                             tags=(str(user_id), tag))
+        
+    #     # Configure tag colors
+    #     self.users_table.tag_configure("inactive", background="#f1f5f9")
+        
+    def refresh_users_table(self, search_term=None):
+        """Refresh the users table with current data"""
+        # Clear existing items
         for item in self.users_table.get_children():
             self.users_table.delete(item)
         
-        # Fetch and display users matching the search term
+        # Fetch and display users
         users = self.fetch_users(search_term)
         
-        if not users:
-            # No users found - show a message
-            messagebox.showinfo("Search Results", "No users found matching your search criteria.")
-            # Reset to show all users
-            self.refresh_users_table()
-            return
-        
-        # Display the filtered users
         for user in users:
             user_id = user["user_id"]
             full_name = f"{user['first_name']} {user['last_name']}"
@@ -1604,24 +1779,6 @@ class AdminApp:
         
         # Configure tag colors
         self.users_table.tag_configure("inactive", background="#f1f5f9")
-        
-        def refresh_users_table(self, search_term=None):
-            # Clear existing items
-            for item in self.users_table.get_children():
-                self.users_table.delete(item)
-            
-            # Fetch and display users
-            users = self.fetch_users(search_term)
-            
-            for user in users:
-                user_id = user["user_id"]
-                full_name = f"{user['first_name']} {user['last_name']}"
-                email = user.get("email", user["username"])
-                if "@" not in email:
-                    email = f"{email}@example.com"  # Add domain if missing
-                role = user["role"].capitalize()
-                
-                self.users_table.insert("", "end", values=(full_name, email, role, ""), tags=(str(user_id),))
     
     def clear_user_fields(self):
         if hasattr(self, 'first_name_entry'):
