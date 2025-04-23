@@ -683,6 +683,12 @@ class AdminApp:
                                 font=("Arial", 14), height=40, width=120,
                                 command=self.delete_selected_product)
         delete_btn.pack(side="left")
+        # Add this Toggle Status button here:
+        toggle_status_btn = ctk.CTkButton(action_frame, text="Toggle Status", 
+                                        fg_color="#8b5cf6", hover_color="#7c3aed",
+                                        font=("Arial", 14), height=40, width=150,
+                                        command=self.toggle_user_status)
+        toggle_status_btn.pack(side="left", padx=(0, 10))
         
         # Refresh button
         refresh_btn = ctk.CTkButton(action_frame, text="Refresh", 
@@ -1252,7 +1258,7 @@ class AdminApp:
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
         # Create columns
-        columns = ("name", "email", "role", "actions")
+        columns = ("name", "email", "role", "status", "actions")
         
         # Create treeview with explicit height
         self.users_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
@@ -1261,13 +1267,15 @@ class AdminApp:
         self.users_table.heading("name", text="Name")
         self.users_table.heading("email", text="Email")
         self.users_table.heading("role", text="Role")
+        self.users_table.heading("status", text="Status") # Add status heading
         self.users_table.heading("actions", text="Actions")
         
         # Define column widths and alignment
-        self.users_table.column("name", width=200, anchor="w")
-        self.users_table.column("email", width=250, anchor="w")
-        self.users_table.column("role", width=100, anchor="center")
-        self.users_table.column("actions", width=200, anchor="center")
+        self.users_table.column("name", width=180, anchor="w")
+        self.users_table.column("email", width=220, anchor="w")
+        self.users_table.column("role", width=80, anchor="center")
+        self.users_table.column("status", width=80, anchor="center") # Add status column
+        self.users_table.column("actions", width=150, anchor="center")
         
         # Add scrollbar
         scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.users_table.yview)
@@ -1457,15 +1465,19 @@ class AdminApp:
                 full_name = f"{user['first_name']} {user['last_name']}"
                 email = user["email"]
                 role = user["role"].capitalize()
+                status = user.get("status", "active").capitalize()  # Get status with default
+                
+                # Set row color based on status
+                tag = "inactive" if status.lower() != "active" else ""
                 
                 # Debug print
-                print(f"Adding user to table: {full_name}, {email}, {role}")
+                print(f"Adding user to table: {full_name}, {email}, {role}, {status}")
                 
-                # Insert into table
+                # Insert into table with status
                 item_id = self.users_table.insert(
                     "", "end",  # parent and index
-                    values=(full_name, email, role, ""),  # values for each column
-                    tags=(str(user_id),)  # tag for identifying the row later
+                    values=(full_name, email, role, status, ""),  # values for each column
+                    tags=(str(user_id), tag)  # tags for identifying the row and styling
                 )
                 
                 print(f"Added user {full_name} with item_id: {item_id}")
@@ -1475,6 +1487,9 @@ class AdminApp:
                 print(f"Error adding user {user.get('user_id', 'unknown')}: {str(e)}")
                 import traceback
                 traceback.print_exc()
+        
+        # Configure tag colors for inactive users
+        self.users_table.tag_configure("inactive", background="#f1f5f9")
         
         # Debug: Show how many items are now in the table
         items = self.users_table.get_children()
