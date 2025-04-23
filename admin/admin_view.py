@@ -1309,27 +1309,77 @@ class AdminApp:
         
         # Populate users table
         self.refresh_users_table()
+    def update_user_search_frame(self, manage_users_frame):
+        """Create an improved search frame for user management"""
+        # Search frame with better UI
+        search_frame = ctk.CTkFrame(manage_users_frame, fg_color="transparent")
+        search_frame.pack(fill="x", padx=20, pady=(0, 10))
+        
+        # Create a container for search components
+        search_container = ctk.CTkFrame(search_frame, fg_color="transparent")
+        search_container.pack(side="left", fill="y")
+        
+        # Search label
+        search_label = ctk.CTkLabel(search_container, text="Search:", 
+                                font=("Arial", 14), text_color="gray")
+        search_label.pack(side="left", padx=(0, 10))
+        
+        # Search entry with increased width
+        self.user_search = ctk.CTkEntry(search_container, placeholder_text="Search by name or email...",
+                                height=35, width=250, corner_radius=5)
+        self.user_search.pack(side="left", padx=(0, 10))
+        
+        # Bind the Enter key to trigger search
+        self.user_search.bind("<Return>", lambda event: self.search_users())
+        
+        # Search button
+        search_btn = ctk.CTkButton(search_container, text="Search",
+                                fg_color="#3b82f6", hover_color="#2563eb",
+                                font=("Arial", 14), height=35, width=80,
+                                command=self.search_users)
+        search_btn.pack(side="left", padx=(0, 10))
+        
+        # Clear search button
+        clear_btn = ctk.CTkButton(search_container, text="Clear",
+                                fg_color="#ef4444", hover_color="#dc2626",
+                                font=("Arial", 14), height=35, width=80,
+                                command=self.clear_user_search)
+        clear_btn.pack(side="left")
+        
+        # Create a container for the right side controls (if needed)
+        right_container = ctk.CTkFrame(search_frame, fg_color="transparent")
+        right_container.pack(side="right", fill="y")
     
+        return search_frame
+    def clear_user_search(self):
+        """Clear the user search field and refresh the table"""
+        if hasattr(self, 'user_search'):
+            self.user_search.delete(0, 'end')
+            self.refresh_users_table()
     def fetch_users(self, search_term=None):
         try:
             connection = connect_db()
             cursor = connection.cursor(dictionary=True)
             
             if search_term:
-                # Search by first name, last name, or username (email)
+                # Add wildcard characters to the search term for partial matching
+                search_pattern = f"%{search_term}%"
+                
+                # Search through first name, last name, username, and email
                 cursor.execute(
                     """
-                    SELECT user_id, first_name, last_name, username, email, role 
+                    SELECT user_id, first_name, last_name, username, email, role, status 
                     FROM Users 
-                    WHERE first_name LIKE %s OR last_name LIKE %s OR username LIKE %s OR email LIKE %s
+                    WHERE first_name LIKE %s OR last_name LIKE %s 
+                    OR username LIKE %s OR email LIKE %s
                     ORDER BY role, first_name, last_name
                     """,
-                    (f"%{search_term}%", f"%{search_term}%", f"%{search_term}%", f"%{search_term}%")
+                    (search_pattern, search_pattern, search_pattern, search_pattern)
                 )
             else:
                 cursor.execute(
                     """
-                    SELECT user_id, first_name, last_name, username, email, role 
+                    SELECT user_id, first_name, last_name, username, email, role, status 
                     FROM Users 
                     ORDER BY role, first_name, last_name
                     """
@@ -1338,34 +1388,240 @@ class AdminApp:
             users = cursor.fetchall()
             return users
         except Exception as err:
+            print(f"Error fetching users: {err}")  # Add print for debugging
             messagebox.showerror("Database Error", str(err))
             return []
         finally:
             if connection and connection.is_connected():
                 cursor.close()
                 connection.close()
+    def setup_users_table(self, table_frame):
+        """Create and configure the users table with proper columns and styling"""
+        # Create a custom style for the treeview
+        style = ttk.Style()
+        style.configure("Treeview", 
+                        background="white",
+                        fieldbackground="white", 
+                        rowheight=40)
+        style.configure("Treeview.Heading", 
+                        font=('Arial', 12, 'bold'),
+                        background="#f8fafc", 
+                        foreground="black")
+        style.map('Treeview', background=[('selected', '#e5e7eb')])
+        
+        # Define columns with proper widths
+        columns = ("name", "email", "role", "status", "actions")
+        
+        # Create treeview
+        self.users_table = ttk.Treeview(table_frame, columns=columns, show="headings")
+        
+        # Define headings
+        self.users_table.heading("name", text="Name")
+        self.users_table.heading("email", text="Email")
+        self.users_table.heading("role", text="Role")
+        self.users_table.heading("status", text="Status")
+        self.users_table.heading("actions", text="Actions")
+        
+        # Define column widths and alignment - adjusted for better proportions
+        self.users_table.column("name", width=200, anchor="w")
+        self.users_table.column("email", width=200, anchor="w")
+        self.users_table.column("role", width=100, anchor="center")
+        self.users_table.column("status", width=100, anchor="center")
+        self.users_table.column("actions", width=150, anchor="center")
+        
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.users_table.yview)
+        self.users_table.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side="right", fill="y")
+        self.users_table.pack(fill="both", expand=True)
+        
+        # Bind double-click event for editing
+        self.users_table.bind("<Double-1>", self.open_edit_user_dialog)
+        
+        # Configure tag for inactive users
+        self.users_table.tag_configure("inactive", background="#f1f5f9")
+        
+        return self.users_table
+    def debug_user_search(self):
+    """Debugging helper for user search functionality"""
+    search_term = self.user_search.get().strip()
+    print(f"Debug: Searching for users with term: '{search_term}'")
+    
+    try:
+        connection = connect_db()
+        cursor = connection.cursor(dictionary=True)
+        
+        # Test database connection
+        print("Debug: Testing database connection...")
+        if not connection or not connection.is_connected():
+            print("Debug: Failed to connect to database")
+            return
+        print("Debug: Database connection successful")
+        
+        # Get total users count (sanity check)
+        cursor.execute("SELECT COUNT(*) as count FROM Users")
+        total_count = cursor.fetchone()["count"]
+        print(f"Debug: Total users in database: {total_count}")
+        
+        if search_term:
+            # Add wildcard characters to the search term for partial matching
+            search_pattern = f"%{search_term}%"
+            
+            # Test search query
+            print(f"Debug: Testing search with pattern: '{search_pattern}'")
+            query = """
+                SELECT user_id, first_name, last_name, username, email, role, status 
+                FROM Users 
+                WHERE first_name LIKE %s OR last_name LIKE %s 
+                   OR username LIKE %s OR email LIKE %s
+                ORDER BY role, first_name, last_name
+            """
+            
+            print(f"Debug: Executing query: {query}")
+            cursor.execute(query, (search_pattern, search_pattern, search_pattern, search_pattern))
+            
+            users = cursor.fetchall()
+            print(f"Debug: Found {len(users)} users matching the search criteria")
+            
+            # Print out each matching user (with sensitive info redacted)
+            for i, user in enumerate(users):
+                print(f"Debug: User {i+1}:")
+                print(f"  - ID: {user['user_id']}")
+                print(f"  - Name: {user['first_name']} {user['last_name']}")
+                print(f"  - Username: {user['username']}")
+                print(f"  - Role: {user['role']}")
+                print(f"  - Status: {user.get('status', 'active')}")
+        
+        print("Debug: User search debugging completed")
+        
+    except Exception as err:
+        print(f"Debug ERROR: {err}")
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
+
+    def repair_user_table(self):
+        """Fix common issues with user table structure"""
+        try:
+            connection = connect_db()
+            cursor = connection.cursor()
+            
+            print("Checking Users table structure...")
+            
+            # Check if status column exists
+            cursor.execute("SHOW COLUMNS FROM Users LIKE 'status'")
+            has_status_column = cursor.fetchone() is not None
+            
+            if not has_status_column:
+                print("Adding missing 'status' column to Users table...")
+                cursor.execute("ALTER TABLE Users ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'")
+                connection.commit()
+                print("Status column added successfully")
+            else:
+                print("Status column exists in Users table")
+            
+            # Set status to active for any NULL values
+            cursor.execute("UPDATE Users SET status = 'active' WHERE status IS NULL")
+            rows_updated = cursor.rowcount
+            if rows_updated > 0:
+                print(f"Fixed {rows_updated} users with NULL status values")
+                connection.commit()
+            
+            print("User table repair completed")
+            messagebox.showinfo("Repair Complete", "User table structure has been checked and repaired if needed.")
+            
+        except Exception as err:
+            print(f"Repair ERROR: {err}")
+            messagebox.showerror("Repair Failed", f"An error occurred: {err}")
+        finally:
+            if connection and connection.is_connected():
+                cursor.close()
+                connection.close()
+
+    # Optional: Add a debug button to the admin interface
+    def add_debug_button(self, parent_frame):
+        """Add a debug button (for development purposes only)"""
+        debug_frame = ctk.CTkFrame(parent_frame, fg_color="transparent")
+        debug_frame.pack(fill="x", padx=20, pady=(10, 0))
+        
+        debug_btn = ctk.CTkButton(debug_frame, text="Debug Search", 
+                            fg_color="#6b7280", hover_color="#4b5563",
+                            font=("Arial", 12), height=30, width=120,
+                            command=self.debug_user_search)
+        debug_btn.pack(side="left", padx=(0, 10))
+        
+        repair_btn = ctk.CTkButton(debug_frame, text="Repair Table", 
+                                fg_color="#6b7280", hover_color="#4b5563",
+                                font=("Arial", 12), height=30, width=120,
+                                command=self.repair_user_table)
+        repair_btn.pack(side="left")
+        
+        # Add a note that this is for development only
+        debug_note = ctk.CTkLabel(debug_frame, text="(Development tools - remove before production)", 
+                            font=("Arial", 10), text_color="gray")
+        debug_note.pack(side="left", padx=(10, 0))
+
     
     def search_users(self):
+        """Search users based on input text"""
         search_term = self.user_search.get().strip()
-        self.refresh_users_table(search_term)
-    
-    def refresh_users_table(self, search_term=None):
-        # Clear existing items
+        
+        if not search_term:
+            # If search field is empty, show all users
+            self.refresh_users_table()
+            return
+        
+        # Clear existing items in the table
         for item in self.users_table.get_children():
             self.users_table.delete(item)
         
-        # Fetch and display users
+        # Fetch and display users matching the search term
         users = self.fetch_users(search_term)
         
+        if not users:
+            # No users found - show a message
+            messagebox.showinfo("Search Results", "No users found matching your search criteria.")
+            # Reset to show all users
+            self.refresh_users_table()
+            return
+        
+        # Display the filtered users
         for user in users:
             user_id = user["user_id"]
             full_name = f"{user['first_name']} {user['last_name']}"
             email = user.get("email", user["username"])
-            if "@" not in email:
+            if "@" not in email and email:
                 email = f"{email}@example.com"  # Add domain if missing
             role = user["role"].capitalize()
+            status = user.get("status", "active").capitalize()  # Get status with default
             
-            self.users_table.insert("", "end", values=(full_name, email, role, ""), tags=(str(user_id),))
+            # Set row color based on status
+            tag = "inactive" if status.lower() != "active" else ""
+            
+            self.users_table.insert("", "end", values=(full_name, email, role, status, ""), 
+                                tags=(str(user_id), tag))
+        
+        # Configure tag colors
+        self.users_table.tag_configure("inactive", background="#f1f5f9")
+        
+        def refresh_users_table(self, search_term=None):
+            # Clear existing items
+            for item in self.users_table.get_children():
+                self.users_table.delete(item)
+            
+            # Fetch and display users
+            users = self.fetch_users(search_term)
+            
+            for user in users:
+                user_id = user["user_id"]
+                full_name = f"{user['first_name']} {user['last_name']}"
+                email = user.get("email", user["username"])
+                if "@" not in email:
+                    email = f"{email}@example.com"  # Add domain if missing
+                role = user["role"].capitalize()
+                
+                self.users_table.insert("", "end", values=(full_name, email, role, ""), tags=(str(user_id),))
     
     def clear_user_fields(self):
         if hasattr(self, 'first_name_entry'):
