@@ -180,45 +180,49 @@ class AdminApp:
             self.refresh_inventory_table()
     def adjust_reports_layout(self, width, height):
         """Adjust the reports layout based on window size"""
-        # For report tabs, adjust the layout of panels for smaller screens
         if hasattr(self, 'report_tabview'):
             # If the screen is narrow, stack the report panels vertically instead of side by side
-            if width < 900 and hasattr(self, 'sales_left_panel') and hasattr(self, 'sales_right_panel'):
-                # Change left and right panels to be stacked
-                self.sales_left_panel.configure(width=width - 60)
-                self.sales_left_panel.pack(side="top", fill="x", pady=(0, 10))
+            if width < 900:
+                # Change layout to vertical stacking for all report tabs
+                self._adjust_report_tab_layout(self.sales_left_panel, self.sales_right_panel, width, True)
                 
-                self.sales_right_panel.configure(width=width - 60)
-                self.sales_right_panel.pack(side="top", fill="both", expand=True)
-                
-                # Also adjust inventory and user report panels if they exist
                 if hasattr(self, 'inventory_left_panel') and hasattr(self, 'inventory_right_panel'):
-                    self.inventory_left_panel.configure(width=width - 60)
-                    self.inventory_left_panel.pack(side="top", fill="x", pady=(0, 10))
-                    
-                    self.inventory_right_panel.configure(width=width - 60)
-                    self.inventory_right_panel.pack(side="top", fill="both", expand=True)
+                    self._adjust_report_tab_layout(self.inventory_left_panel, self.inventory_right_panel, width, True)
                 
                 if hasattr(self, 'user_left_panel') and hasattr(self, 'user_right_panel'):
-                    self.user_left_panel.configure(width=width - 60)
-                    self.user_left_panel.pack(side="top", fill="x", pady=(0, 10))
-                    
-                    self.user_right_panel.configure(width=width - 60)
-                    self.user_right_panel.pack(side="top", fill="both", expand=True)
-            elif width >= 900:
+                    self._adjust_report_tab_layout(self.user_left_panel, self.user_right_panel, width, True)
+            else:
                 # Restore side-by-side layout for wider screens
-                if hasattr(self, 'sales_left_panel') and hasattr(self, 'sales_right_panel'):
-                    self.sales_left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=0)
-                    self.sales_right_panel.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=0)
+                self._adjust_report_tab_layout(self.sales_left_panel, self.sales_right_panel, width, False)
                 
                 if hasattr(self, 'inventory_left_panel') and hasattr(self, 'inventory_right_panel'):
-                    self.inventory_left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=0)
-                    self.inventory_right_panel.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=0)
+                    self._adjust_report_tab_layout(self.inventory_left_panel, self.inventory_right_panel, width, False)
                 
                 if hasattr(self, 'user_left_panel') and hasattr(self, 'user_right_panel'):
-                    self.user_left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=0)
-                    self.user_right_panel.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=0)
-    
+                    self._adjust_report_tab_layout(self.user_left_panel, self.user_right_panel, width, False)
+    def _adjust_report_tab_layout(self, left_panel, right_panel, width, vertical_layout):
+        """Helper method to adjust layout of report tab panels"""
+        # First, unpack both panels
+        left_panel.pack_forget()
+        right_panel.pack_forget()
+        
+        # Then repack based on layout mode
+        if vertical_layout:
+            left_panel.configure(width=width - 60)
+            left_panel.pack(side="top", fill="x", pady=(0, 10))
+            
+            right_panel.configure(width=width - 60)
+            right_panel.pack(side="top", fill="both", expand=True)
+        else:
+            left_panel.pack(side="left", fill="both", expand=True, padx=(0, 10), pady=0)
+            right_panel.pack(side="right", fill="both", expand=True, padx=(10, 0), pady=0)
+    def ensure_reports_folder(self):
+        """Create reports folder if it doesn't exist"""
+        reports_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "reports")
+        if not os.path.exists(reports_path):
+            os.makedirs(reports_path)
+        return reports_path
+            
     def logout(self):
         # Remove the user file when logging out
         if os.path.exists("current_user.txt"):
@@ -3390,7 +3394,7 @@ class AdminApp:
             error_label.pack(expand=True)
 
     def download_sales_report(self):
-        """Download sales report to file"""
+        """Download sales report to file in reports folder"""
         if not self.sales_report_data:
             messagebox.showwarning("No Data", "Please generate a report first.")
             return
@@ -3398,8 +3402,18 @@ class AdminApp:
         # Determine file extension
         ext = "csv" if self.sales_format_var.get() == "csv" else "txt"
         
-        # Get save location from user
+        # Create reports folder
+        reports_path = self.ensure_reports_folder()
+        
+        # Generate default filename with timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_filename = f"sales_report_{timestamp}.{ext}"
+        default_path = os.path.join(reports_path, default_filename)
+        
+        # Ask user to confirm or change filename
         filename = filedialog.asksaveasfilename(
+            initialdir=reports_path,
+            initialfile=default_filename,
             defaultextension=f".{ext}",
             filetypes=[
                 (f"{ext.upper()} files", f"*.{ext}"),
@@ -3408,17 +3422,19 @@ class AdminApp:
             title="Save Sales Report"
         )
         
+        # If user cancels, use default path
         if not filename:
-            return  # User cancelled
+            filename = default_path
         
         # Save the file
         try:
             with open(filename, 'w', newline='') as file:
                 file.write(self.sales_report_data)
             
-            messagebox.showinfo("Success", f"Report saved to {filename}")
+            messagebox.showinfo("Success", f"Report saved to {os.path.basename(filename)}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save file: {str(e)}")
+
             
     def generate_inventory_report(self):
         """Generate inventory report based on selected options"""
@@ -3613,7 +3629,7 @@ class AdminApp:
             return report
 
     def download_inventory_report(self):
-        """Download inventory report to file"""
+        """Download inventory report to file in reports folder"""
         if not self.inventory_report_data:
             messagebox.showwarning("No Data", "Please generate a report first.")
             return
@@ -3621,8 +3637,18 @@ class AdminApp:
         # Determine file extension
         ext = "csv" if self.inventory_format_var.get() == "csv" else "txt"
         
-        # Get save location from user
+        # Create reports folder
+        reports_path = self.ensure_reports_folder()
+        
+        # Generate default filename with timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_filename = f"inventory_report_{timestamp}.{ext}"
+        default_path = os.path.join(reports_path, default_filename)
+        
+        # Ask user to confirm or change filename
         filename = filedialog.asksaveasfilename(
+            initialdir=reports_path,
+            initialfile=default_filename,
             defaultextension=f".{ext}",
             filetypes=[
                 (f"{ext.upper()} files", f"*.{ext}"),
@@ -3631,15 +3657,16 @@ class AdminApp:
             title="Save Inventory Report"
         )
         
+        # If user cancels, use default path
         if not filename:
-            return  # User cancelled
+            filename = default_path
         
         # Save the file
         try:
             with open(filename, 'w', newline='') as file:
                 file.write(self.inventory_report_data)
             
-            messagebox.showinfo("Success", f"Report saved to {filename}")
+            messagebox.showinfo("Success", f"Report saved to {os.path.basename(filename)}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save file: {str(e)}")
 
@@ -3816,7 +3843,7 @@ class AdminApp:
             return report
 
     def download_user_report(self):
-        """Download user report to file"""
+        """Download user report to file in reports folder"""
         if not self.user_report_data:
             messagebox.showwarning("No Data", "Please generate a report first.")
             return
@@ -3824,27 +3851,39 @@ class AdminApp:
         # Determine file extension
         ext = "csv" if self.user_format_var.get() == "csv" else "txt"
         
-        # Get save location from user
+        # Create reports folder
+        reports_path = self.ensure_reports_folder()
+        
+        # Generate default filename with timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        default_filename = f"user_report_{timestamp}.{ext}"
+        default_path = os.path.join(reports_path, default_filename)
+        
+        # Ask user to confirm or change filename
         filename = filedialog.asksaveasfilename(
+            initialdir=reports_path,
+            initialfile=default_filename,
             defaultextension=f".{ext}",
             filetypes=[
                 (f"{ext.upper()} files", f"*.{ext}"),
                 ("All files", "*.*")
             ],
-            title="Save User Activity Report"
+            title="Save User Report"
         )
         
+        # If user cancels, use default path
         if not filename:
-            return  # User cancelled
+            filename = default_path
         
         # Save the file
         try:
             with open(filename, 'w', newline='') as file:
                 file.write(self.user_report_data)
             
-            messagebox.showinfo("Success", f"Report saved to {filename}")
+            messagebox.showinfo("Success", f"Report saved to {os.path.basename(filename)}")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save file: {str(e)}")
+
     
 if __name__ == "__main__":
     ctk.set_appearance_mode("light")
