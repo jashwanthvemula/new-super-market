@@ -42,6 +42,13 @@ def setup_database():
         cursor.execute(f"USE {db_name}")
         
         print("Creating Users table")
+       
+        cursor.execute("""ALTER TABLE Users
+ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'; """)
+
+ 
+        cursor.execute("""ALTER TABLE Products
+    ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'; """)
         # Create Users table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS Users (

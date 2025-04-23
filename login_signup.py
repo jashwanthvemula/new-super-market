@@ -270,6 +270,8 @@ class LoginApp:
             self.password_entry.configure(show="")
             self.password_toggle_btn.configure(text="👁️‍🗨️")  # Eye with speech bubble to indicate visible
     
+# This is an update to the login_user method in login_signup.py
+
     def login_user(self):
         username = self.username_entry.get()
         password = self.password_entry.get()
@@ -284,14 +286,19 @@ class LoginApp:
             connection = connect_db()
             cursor = connection.cursor()
             cursor.execute(
-                "SELECT first_name, last_name, role FROM Users WHERE username = %s AND password = %s",
+                "SELECT first_name, last_name, role, status FROM Users WHERE username = %s AND password = %s",
                 (username, hashed_password)
             )
             user = cursor.fetchone()
 
             if user:
-                first_name, last_name, role = user
+                first_name, last_name, role, status = user
                 
+                # Check if user account is active
+                if status != "active":
+                    messagebox.showerror("Account Disabled", "Your account has been disabled. Please contact an administrator.")
+                    return
+                    
                 messagebox.showinfo("Success", f"Welcome {first_name} {last_name} ({role})!")
                 
                 # Save login info for other scripts

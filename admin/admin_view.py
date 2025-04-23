@@ -416,6 +416,8 @@ class AdminApp:
             self.admin_password.configure(show="")
             self.password_toggle_btn.configure(text="👁️‍🗨️")  # Eye with speech bubble to indicate visible
     
+# This is an update to the admin_login method in admin_view.py
+
     def admin_login(self):
         username = self.admin_username.get()
         password = self.admin_password.get()
@@ -432,13 +434,18 @@ class AdminApp:
             cursor = connection.cursor(dictionary=True)
             
             cursor.execute(
-                "SELECT user_id, first_name, last_name, role FROM Users WHERE username = %s AND password = %s",
+                "SELECT user_id, first_name, last_name, role, status FROM Users WHERE username = %s AND password = %s",
                 (username, hashed_password)
             )
             
             user = cursor.fetchone()
             
             if user and user["role"] == "admin":
+                # Check if admin account is active
+                if user["status"] != "active":
+                    messagebox.showerror("Account Disabled", "Your admin account has been disabled. Please contact another administrator.")
+                    return
+                    
                 # Store user info
                 self.current_user["user_id"] = user["user_id"]
                 self.current_user["username"] = username
@@ -505,12 +512,12 @@ class AdminApp:
         
         # Header
         header_label = ctk.CTkLabel(self.content_frame, text="Inventory Management",
-                                   font=("Arial", 24, "bold"), text_color="#2563eb")
+                                font=("Arial", 24, "bold"), text_color="#2563eb")
         header_label.pack(anchor="w", padx=30, pady=(10, 20))
         
         # Add New Item Section
         self.add_item_section = ctk.CTkFrame(self.content_frame, fg_color="white", corner_radius=10,
-                                      border_width=1, border_color="#e5e7eb")
+                                    border_width=1, border_color="#e5e7eb")
         self.add_item_section.pack(fill="x", padx=30, pady=10)
         
         add_item_label = ctk.CTkLabel(self.add_item_section, text="Add New Item",
@@ -589,7 +596,7 @@ class AdminApp:
         title_container.pack(side="left", fill="y")
         
         inventory_label = ctk.CTkLabel(title_container, text="Existing Inventory",
-                                     font=("Arial", 18, "bold"), text_color="black")
+                                    font=("Arial", 18, "bold"), text_color="black")
         inventory_label.pack(side="left")
         
         # Create a container for the right side (search)
@@ -601,21 +608,91 @@ class AdminApp:
         search_frame.pack(side="right")
         
         self.inventory_search = ctk.CTkEntry(search_frame, placeholder_text="Search items...",
-                                      height=35, width=200, corner_radius=5)
+                                    height=35, width=200, corner_radius=5)
         self.inventory_search.pack(side="left", padx=(0, 10))
         
         search_btn = ctk.CTkButton(search_frame, text="Search",
-                                 fg_color="#3b82f6", hover_color="#2563eb",
-                                 font=("Arial", 14), height=35, width=80,
-                                 command=self.search_inventory)
+                                fg_color="#3b82f6", hover_color="#2563eb",
+                                font=("Arial", 14), height=35, width=80,
+                                command=self.search_inventory)
         search_btn.pack(side="left", padx=(0, 10))
         
         # Clear search button
         clear_search_btn = ctk.CTkButton(search_frame, text="Clear",
-                                      fg_color="#ef4444", hover_color="#dc2626",
-                                      font=("Arial", 14), height=35, width=80,
-                                      command=self.clear_inventory_search)
+                                    fg_color="#ef4444", hover_color="#dc2626",
+                                    font=("Arial", 14), height=35, width=80,
+                                    command=self.clear_inventory_search)
         clear_search_btn.pack(side="left")
+        
+        # Create a frame for the inventory table
+        table_frame = ctk.CTkFrame(self.inventory_section, fg_color="white")
+        table_frame.pack(fill="both", expand=True, pady=10)
+        
+        # Create columns - add status column
+        columns = ("name", "price", "stock", "status", "actions")
+        
+        # Create treeview
+        self.inventory_table = ttk.Treeview(table_frame, columns=columns, show="headings")
+        
+        # Define headings
+        self.inventory_table.heading("name", text="Name")
+        self.inventory_table.heading("price", text="Price")
+        self.inventory_table.heading("stock", text="Stock")
+        self.inventory_table.heading("status", text="Status")
+        self.inventory_table.heading("actions", text="Actions")
+        
+        # Define column widths and alignment
+        self.inventory_table.column("name", width=300, anchor="w")
+        self.inventory_table.column("price", width=100, anchor="center")
+        self.inventory_table.column("stock", width=100, anchor="center")
+        self.inventory_table.column("status", width=100, anchor="center")
+        self.inventory_table.column("actions", width=200, anchor="center")
+        
+        # Add a scrollbar
+        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.inventory_table.yview)
+        self.inventory_table.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack the scrollbar and treeview
+        scrollbar.pack(side="right", fill="y")
+        self.inventory_table.pack(fill="both", expand=True)
+        
+        # Bind double-click event for editing
+        self.inventory_table.bind("<Double-1>", self.edit_product)
+        
+        # Action buttons for inventory
+        action_frame = ctk.CTkFrame(self.inventory_section, fg_color="transparent")
+        action_frame.pack(fill="x", padx=20, pady=10)
+        
+        # Edit button
+        edit_btn = ctk.CTkButton(action_frame, text="Edit Selected", 
+                                fg_color="#eab308", hover_color="#ca8a04",
+                                font=("Arial", 14), height=40, width=120,
+                                command=lambda: self.edit_product(None))
+        edit_btn.pack(side="left", padx=(0, 10))
+        
+        # Toggle Status button (new)
+        toggle_status_btn = ctk.CTkButton(action_frame, text="Toggle Status", 
+                                        fg_color="#8b5cf6", hover_color="#7c3aed",
+                                        font=("Arial", 14), height=40, width=120,
+                                        command=self.toggle_product_status)
+        toggle_status_btn.pack(side="left", padx=(0, 10))
+        
+        # Delete button
+        delete_btn = ctk.CTkButton(action_frame, text="Delete Selected", 
+                                fg_color="#ef4444", hover_color="#dc2626",
+                                font=("Arial", 14), height=40, width=120,
+                                command=self.delete_selected_product)
+        delete_btn.pack(side="left")
+        
+        # Refresh button
+        refresh_btn = ctk.CTkButton(action_frame, text="Refresh", 
+                                fg_color="#10b981", hover_color="#059669",
+                                font=("Arial", 14), height=40, width=120,
+                                command=self.refresh_inventory_table)
+        refresh_btn.pack(side="right")
+        
+        # Populate the table with products
+        self.refresh_inventory_table()
     
     def fetch_inventory(self, search_term=None):
         try:
@@ -624,11 +701,11 @@ class AdminApp:
             
             if search_term:
                 cursor.execute(
-                    "SELECT product_id, name, price, stock FROM Products WHERE name LIKE %s ORDER BY name",
+                    "SELECT product_id, name, price, stock, status FROM Products WHERE name LIKE %s ORDER BY name",
                     (f"%{search_term}%",)
                 )
             else:
-                cursor.execute("SELECT product_id, name, price, stock FROM Products ORDER BY name")
+                cursor.execute("SELECT product_id, name, price, stock, status FROM Products ORDER BY name")
             
             products = cursor.fetchall()
             return products
@@ -657,8 +734,63 @@ class AdminApp:
             name = product["name"]
             price = f"${float(product['price']):.2f}"
             stock = product["stock"]
+            status = product["status"].capitalize()
             
-            self.inventory_table.insert("", "end", values=(name, price, stock, ""), tags=(str(product_id),))
+            # Set row color based on status
+            tag = "inactive" if status.lower() != "active" else ""
+            
+            self.inventory_table.insert("", "end", values=(name, price, stock, status, ""), tags=(str(product_id), tag))
+        
+        # Configure tag colors
+        self.inventory_table.tag_configure("inactive", background="#f1f5f9")
+    def update_product_status(self, product_id, status):
+        try:
+            connection = connect_db()
+            cursor = connection.cursor()
+            
+            cursor.execute(
+                "UPDATE Products SET status = %s WHERE product_id = %s",
+                (status, product_id)
+            )
+            
+            connection.commit()
+            return True
+        except Exception as err:
+            messagebox.showerror("Database Error", str(err))
+            return False
+        finally:
+            if connection and connection.is_connected():
+                cursor.close()
+                connection.close()
+    def toggle_product_status(self):
+        selected_items = self.inventory_table.selection()
+        if not selected_items:
+            messagebox.showinfo("Info", "Please select a product.")
+            return
+        
+        item = selected_items[0]
+        values = self.inventory_table.item(item, 'values')
+        
+        if not values:
+            return
+        
+        # Get product ID from tag
+        product_id = int(self.inventory_table.item(item, 'tags')[0])
+        product_name = values[0]
+        current_status = values[3].lower()
+        
+        # Confirm action
+        new_status = "inactive" if current_status == "active" else "active"
+        action = "disable" if current_status == "active" else "enable"
+        
+        confirm = messagebox.askyesno("Confirm Action", f"Are you sure you want to {action} '{product_name}'?")
+        if not confirm:
+            return
+        
+        # Update product status
+        if self.update_product_status(product_id, new_status):
+            messagebox.showinfo("Success", f"Product '{product_name}' has been {action}d.")
+            self.refresh_inventory_table()
 
     def clear_product_fields(self):
         self.item_name_entry.delete(0, 'end')
@@ -724,10 +856,10 @@ class AdminApp:
                 messagebox.showwarning("Input Error", f"Product '{name}' already exists.")
                 return False
             
-            # Insert new product
+            # Insert new product with active status
             cursor.execute(
-                "INSERT INTO Products (name, price, stock) VALUES (%s, %s, %s)",
-                (name, price_val, stock_val)
+                "INSERT INTO Products (name, price, stock, status) VALUES (%s, %s, %s, %s)",
+                (name, price_val, stock_val, "active")
             )
             
             connection.commit()
@@ -740,7 +872,7 @@ class AdminApp:
                 cursor.close()
                 connection.close()
     
-    def update_product(self, product_id, name, price, stock):
+    def update_product(self, product_id, name, price, stock, status="active"):
         if not name or not price or not stock:
             messagebox.showwarning("Input Error", "Please fill out all fields.")
             return False
@@ -768,7 +900,7 @@ class AdminApp:
             
             # Check if another product with same name exists
             cursor.execute("SELECT product_id FROM Products WHERE name = %s AND product_id != %s", 
-                         (name, product_id))
+                        (name, product_id))
             if cursor.fetchone():
                 messagebox.showwarning("Input Error", f"Another product with name '{name}' already exists.")
                 return False
@@ -804,20 +936,106 @@ class AdminApp:
         # Get product ID from tag
         product_id = int(self.inventory_table.item(item, 'tags')[0])
         
-        # Fill entry fields with selected product details
-        self.item_name_entry.delete(0, 'end')
-        self.item_name_entry.insert(0, values[0])  # Name
+        # Create a popup dialog for editing product
+        self.edit_product_dialog = ctk.CTkToplevel(self.root)
+        self.edit_product_dialog.title("Edit Product")
+        self.edit_product_dialog.geometry("500x400")
+        self.edit_product_dialog.resizable(False, False)
+        self.edit_product_dialog.grab_set()  # Make dialog modal
         
-        self.price_entry.delete(0, 'end')
-        self.price_entry.insert(0, values[1].replace(',', ''))  # Price without $ sign
+        # Center dialog on screen
+        self.edit_product_dialog.update_idletasks()
+        width = self.edit_product_dialog.winfo_width()
+        height = self.edit_product_dialog.winfo_height()
+        x = (self.edit_product_dialog.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.edit_product_dialog.winfo_screenheight() // 2) - (height // 2)
+        self.edit_product_dialog.geometry('{}x{}+{}+{}'.format(width, height, x, y))
         
-        self.stock_entry.delete(0, 'end')
-        self.stock_entry.insert(0, values[2])  # Stock
+        # Content frame
+        content_frame = ctk.CTkFrame(self.edit_product_dialog, fg_color="white", corner_radius=10)
+        content_frame.pack(fill="both", expand=True, padx=20, pady=20)
         
-        # Change button text and store product ID
-        self.add_item_btn.configure(text="Update Item")
+        # Header
+        header_label = ctk.CTkLabel(content_frame, text="Edit Product",
+                                font=("Arial", 18, "bold"), text_color="#2563eb")
+        header_label.pack(anchor="w", pady=(10, 20))
+        
+        # Product details
+        product_name = values[0]
+        product_price = values[1].replace('$', '')
+        product_stock = values[2]
+        product_status = values[3].lower()
+        
+        # Form layout
+        # Name Entry - Row 1
+        name_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+        name_frame.pack(fill="x", pady=5)
+        
+        name_label = ctk.CTkLabel(name_frame, text="Name", width=100, font=("Arial", 14), text_color="gray")
+        name_label.pack(side="left", padx=(0, 10))
+        
+        self.edit_name_entry = ctk.CTkEntry(name_frame, height=40, corner_radius=5)
+        self.edit_name_entry.pack(side="left", fill="x", expand=True)
+        self.edit_name_entry.insert(0, product_name)
+        
+        # Price Entry - Row 2
+        price_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+        price_frame.pack(fill="x", pady=5)
+        
+        price_label = ctk.CTkLabel(price_frame, text="Price ($)", width=100, font=("Arial", 14), text_color="gray")
+        price_label.pack(side="left", padx=(0, 10))
+        
+        self.edit_price_entry = ctk.CTkEntry(price_frame, height=40, corner_radius=5)
+        self.edit_price_entry.pack(side="left", fill="x", expand=True)
+        self.edit_price_entry.insert(0, product_price)
+        
+        # Stock Entry - Row 3
+        stock_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+        stock_frame.pack(fill="x", pady=5)
+        
+        stock_label = ctk.CTkLabel(stock_frame, text="Stock", width=100, font=("Arial", 14), text_color="gray")
+        stock_label.pack(side="left", padx=(0, 10))
+        
+        self.edit_stock_entry = ctk.CTkEntry(stock_frame, height=40, corner_radius=5)
+        self.edit_stock_entry.pack(side="left", fill="x", expand=True)
+        self.edit_stock_entry.insert(0, product_stock)
+        
+        # Status Selection - Row 4
+        status_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+        status_frame.pack(fill="x", pady=5)
+        
+        status_label = ctk.CTkLabel(status_frame, text="Status", width=100, font=("Arial", 14), text_color="gray")
+        status_label.pack(side="left", padx=(0, 10))
+        
+        self.edit_status_var = ctk.StringVar(value=product_status)
+        
+        active_radio = ctk.CTkRadioButton(status_frame, text="Active", variable=self.edit_status_var, value="active")
+        active_radio.pack(side="left", padx=(0, 15))
+        
+        inactive_radio = ctk.CTkRadioButton(status_frame, text="Inactive", variable=self.edit_status_var, value="inactive")
+        inactive_radio.pack(side="left")
+        
+        # Buttons frame
+        buttons_frame = ctk.CTkFrame(content_frame, fg_color="transparent")
+        buttons_frame.pack(fill="x", pady=20)
+        
+        # Save Button
+        save_btn = ctk.CTkButton(buttons_frame, text="Save Changes",
+                                fg_color="#10b981", hover_color="#059669",
+                                font=("Arial", 14), height=40, width=150,
+                                command=lambda: self.save_product_edits(product_id))
+        save_btn.pack(side="left", padx=(0, 10))
+        
+        # Cancel Button
+        cancel_btn = ctk.CTkButton(buttons_frame, text="Cancel",
+                                fg_color="#6b7280", hover_color="#4b5563",
+                                font=("Arial", 14), height=40, width=150,
+                                command=self.edit_product_dialog.destroy)
+        cancel_btn.pack(side="left")
+        
+        # Store product ID for later use
         self.editing_product_id = product_id
-
+    
     def delete_selected_product(self):
         selected_items = self.inventory_table.selection()
         if not selected_items:
@@ -881,19 +1099,20 @@ class AdminApp:
                 connection.close()
     def show_user_management(self):
         self.clear_content_frame()
+        self.current_view = "users"  # Add this line to set current view
         
         # Header
         header_label = ctk.CTkLabel(self.content_frame, text="User Management",
-                                   font=("Arial", 24, "bold"), text_color="#2563eb")
+                                font=("Arial", 24, "bold"), text_color="#2563eb")
         header_label.pack(anchor="w", padx=30, pady=(30, 20))
         
         # Create tabview for different user management sections
-        tabview = ctk.CTkTabview(self.content_frame, corner_radius=15)
-        tabview.pack(fill="both", expand=True, padx=30, pady=10)
+        self.user_tabview = ctk.CTkTabview(self.content_frame, corner_radius=15)
+        self.user_tabview.pack(fill="both", expand=True, padx=30, pady=10)
         
         # Create tabs
-        add_user_tab = tabview.add("Add User")
-        manage_users_tab = tabview.add("Manage Users")
+        add_user_tab = self.user_tabview.add("Add User")
+        manage_users_tab = self.user_tabview.add("Manage Users")
         
         # ===== Add User Tab =====
         # Add New User Section with improved UI
@@ -1030,7 +1249,7 @@ class AdminApp:
         table_frame.pack(fill="both", expand=True, padx=20, pady=10)
         
         # Create columns
-        columns = ("name", "email", "role", "actions")
+        columns = ("name", "email", "role", "status", "actions")
         
         # Create treeview
         self.users_table = ttk.Treeview(table_frame, columns=columns, show="headings")
@@ -1039,53 +1258,53 @@ class AdminApp:
         self.users_table.heading("name", text="Name")
         self.users_table.heading("email", text="Email")
         self.users_table.heading("role", text="Role")
+        self.users_table.heading("status", text="Status")
         self.users_table.heading("actions", text="Actions")
         
         # Define column widths and alignment
         self.users_table.column("name", width=200, anchor="w")
-        self.users_table.column("email", width=250, anchor="w")
-        self.users_table.column("role", width=100, anchor="center")
+        self.users_table.column("email", width=200, anchor="w")
+        self.users_table.column("role", width=80, anchor="center")
+        self.users_table.column("status", width=80, anchor="center")
         self.users_table.column("actions", width=200, anchor="center")
         
-        # Add scrollbar
-        scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.users_table.yview)
-        self.users_table.configure(yscrollcommand=scrollbar.set)
-        scrollbar.pack(side="right", fill="y")
-        self.users_table.pack(fill="both", expand=True)
-        
-        # Bind double-click event for editing
-        self.users_table.bind("<Double-1>", self.open_edit_user_dialog)
-        
-        # Create action buttons frame
+        # Modify action buttons to include Toggle Status
         action_frame = ctk.CTkFrame(manage_users_frame, fg_color="transparent")
         action_frame.pack(fill="x", padx=20, pady=10)
         
         # Edit button
         edit_btn = ctk.CTkButton(action_frame, text="Edit Selected", 
-                               fg_color="#eab308", hover_color="#ca8a04",
-                               font=("Arial", 14), height=40, width=150,
-                               command=lambda: self.open_edit_user_dialog(None))
+                            fg_color="#eab308", hover_color="#ca8a04",
+                            font=("Arial", 14), height=40, width=120,
+                            command=lambda: self.open_edit_user_dialog(None))
         edit_btn.pack(side="left", padx=(0, 10))
+        
+        # Toggle Status button (new)
+        toggle_status_btn = ctk.CTkButton(action_frame, text="Toggle Status", 
+                                    fg_color="#8b5cf6", hover_color="#7c3aed",
+                                    font=("Arial", 14), height=40, width=120,
+                                    command=self.toggle_user_status)
+        toggle_status_btn.pack(side="left", padx=(0, 10))
         
         # Delete button
         delete_btn = ctk.CTkButton(action_frame, text="Delete Selected", 
-                                 fg_color="#ef4444", hover_color="#dc2626",
-                                 font=("Arial", 14), height=40, width=150,
-                                 command=self.delete_selected_user)
+                                fg_color="#ef4444", hover_color="#dc2626",
+                                font=("Arial", 14), height=40, width=120,
+                                command=self.delete_selected_user)
         delete_btn.pack(side="left", padx=(0, 10))
         
         # Reset Password button
         reset_btn = ctk.CTkButton(action_frame, text="Reset Password", 
                                 fg_color="#3b82f6", hover_color="#2563eb",
-                                font=("Arial", 14), height=40, width=150,
+                                font=("Arial", 14), height=40, width=120,
                                 command=self.reset_selected_password)
         reset_btn.pack(side="left")
         
         # Refresh button
         refresh_btn = ctk.CTkButton(action_frame, text="Refresh", 
-                                  fg_color="#10b981", hover_color="#059669",
-                                  font=("Arial", 14), height=40, width=120,
-                                  command=self.refresh_users_table)
+                                fg_color="#10b981", hover_color="#059669",
+                                font=("Arial", 14), height=40, width=120,
+                                command=self.refresh_users_table)
         refresh_btn.pack(side="right")
         
         # Populate users table
@@ -2741,6 +2960,69 @@ class AdminApp:
         except Exception as err:
             messagebox.showerror("Database Error", str(err))
             return []
+        finally:
+            if connection and connection.is_connected():
+                cursor.close()
+                connection.close()
+    def save_product_edits(self, product_id):
+        name = self.edit_name_entry.get().strip()
+        price = self.edit_price_entry.get().strip()
+        stock = self.edit_stock_entry.get().strip()
+        status = self.edit_status_var.get()
+        
+        if not name or not price or not stock:
+            messagebox.showwarning("Input Error", "Please fill out all fields.", parent=self.edit_product_dialog)
+            return
+        
+        try:
+            # Validate price and stock are numeric
+            try:
+                price_val = float(price)
+                stock_val = int(stock)
+                
+                if price_val <= 0:
+                    messagebox.showwarning("Input Error", "Price must be greater than zero.", parent=self.edit_product_dialog)
+                    return
+                
+                if stock_val < 0:
+                    messagebox.showwarning("Input Error", "Stock cannot be negative.", parent=self.edit_product_dialog)
+                    return
+                    
+            except ValueError:
+                messagebox.showwarning("Input Error", "Price and Stock must be numeric values.", parent=self.edit_product_dialog)
+                return
+            
+            connection = connect_db()
+            cursor = connection.cursor()
+            
+            # Check if another product with same name exists
+            cursor.execute(
+                "SELECT product_id FROM Products WHERE name = %s AND product_id != %s", 
+                (name, product_id)
+            )
+            if cursor.fetchone():
+                messagebox.showwarning("Input Error", 
+                                    f"Another product with name '{name}' already exists.", 
+                                    parent=self.edit_product_dialog)
+                return
+            
+            # Update product with status
+            cursor.execute(
+                """
+                UPDATE Products 
+                SET name = %s, price = %s, stock = %s, status = %s 
+                WHERE product_id = %s
+                """,
+                (name, price_val, stock_val, status, product_id)
+            )
+            
+            connection.commit()
+            messagebox.showinfo("Success", "Product updated successfully!")
+            self.edit_product_dialog.destroy()
+            self.refresh_inventory_table()
+            
+        except Exception as err:
+            messagebox.showerror("Database Error", str(err), parent=self.edit_product_dialog)
         finally:
             if connection and connection.is_connected():
                 cursor.close()
