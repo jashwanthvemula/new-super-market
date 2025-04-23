@@ -802,7 +802,7 @@ class UserApp:
         return False
     
 
-    def create_cart_item_display(self, product_name, product_price, quantity):
+    def create_cart_item_display(self, product_name, product_price, quantity, product_id):
         # Create a frame for this cart item
         item_frame = ctk.CTkFrame(self.cart_container, fg_color="white", corner_radius=5, height=40)
         item_frame.pack(fill="x", padx=10, pady=5)
