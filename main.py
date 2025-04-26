@@ -5,13 +5,11 @@ import mysql.connector
 import subprocess
 from tkinter import messagebox
 import shutil
+from PIL import Image, ImageTk
 
 from config_db import connect_db, DB_CONFIG
 
-
 # Set environment variables
-
-
 def connect_db_without_database():
     """Connect to MySQL without specifying a database"""
     config = DB_CONFIG.copy()
@@ -26,7 +24,6 @@ def connect_db_without_database():
 
 def setup_database():
     """Create and set up the database with all required tables"""
-    # First connect without specifying database
     conn = connect_db_without_database()
     if not conn:
         messagebox.showerror("Database Error", "Failed to connect to MySQL server")
@@ -36,20 +33,10 @@ def setup_database():
         cursor = conn.cursor()
         db_name = DB_CONFIG["database"]
         
-        # Create database if it doesn't exist
-        print(f"Creating database: {db_name}")
         cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_name}")
         cursor.execute(f"USE {db_name}")
         
         print("Creating Users table")
-       
-#         cursor.execute("""ALTER TABLE Users
-# ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'; """)
-
- 
-#         cursor.execute("""ALTER TABLE Products
-#     ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'active'; """)
-        # Create Users table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS Users (
             user_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -65,7 +52,6 @@ def setup_database():
         """)
         
         print("Creating Products table")
-        # Create Products table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS Products (
             product_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -78,7 +64,6 @@ def setup_database():
         """)
         
         print("Creating Carts table")
-        # Create Carts table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS Carts (
             cart_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -90,7 +75,6 @@ def setup_database():
         """)
         
         print("Creating CartItems table")
-        # Create CartItems table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS CartItems (
             cart_item_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -103,7 +87,6 @@ def setup_database():
         """)
         
         print("Creating Orders table")
-        # Create Orders table
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS Orders (
             order_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -120,7 +103,6 @@ def setup_database():
         conn.commit()
         print("Database tables created successfully")
         
-        # Create default users and products
         create_default_user(cursor, conn)
         create_default_products(cursor, conn)
         
@@ -136,15 +118,12 @@ def setup_database():
             conn.close()
 
 def create_default_user(cursor, conn):
-    """Create a default admin user if no users exist"""
     try:
-        # Check if users already exist
         cursor.execute("SELECT COUNT(*) FROM Users")
         count = cursor.fetchone()[0]
         
         if count == 0:
             print("Creating default users")
-            # Create an admin user
             from utils_file import hash_password
             hashed_password = hash_password("admin123")
             cursor.execute("""
@@ -152,7 +131,6 @@ def create_default_user(cursor, conn):
             VALUES ('Admin', 'User', 'admin123', 'admin@supermarket.com', %s, 'admin')
             """, (hashed_password,))
             
-            # Create a regular user
             hashed_password = hash_password("user123")
             cursor.execute("""
             INSERT INTO Users (first_name, last_name, username, email, password, role)
@@ -171,15 +149,12 @@ def create_default_user(cursor, conn):
         return False
 
 def create_default_products(cursor, conn):
-    """Create default products if no products exist"""
     try:
-        # Check if products already exist
         cursor.execute("SELECT COUNT(*) FROM Products")
         count = cursor.fetchone()[0]
         
         if count == 0:
             print("Creating default products")
-            # Insert some default products
             products = [
                 ("Fresh Apples", 2.00, 50, "images/apple.png"),
                 ("Organic Bananas", 1.50, 30, "images/banana.png"),
@@ -209,14 +184,11 @@ def create_default_products(cursor, conn):
         return False
 
 def check_image_files():
-    """Check if required image files exist, copy to appropriate folder"""
     required_images = ["apple.png", "banana.png", "broccoli.png", "shopping.png"]
     
-    # Check if images folder exists, create if not
     if not os.path.exists("images"):
         os.makedirs("images")
     
-    # Copy the images to the images folder if they exist in current directory
     for image in required_images:
         if os.path.exists(image) and not os.path.exists(os.path.join("images", image)):
             shutil.copy(image, os.path.join("images", image))
@@ -226,81 +198,85 @@ class SuperMarketApp:
     def __init__(self, root):
         self.root = root
         self.root.title("SuperMarket Management System")
-        self.root.geometry("600x400")
+        self.root.geometry("800x600")
         self.root.resizable(False, False)
         
-        # Configure appearance
         ctk.set_appearance_mode("light")
         ctk.set_default_color_theme("blue")
         
+        self.background_image = self.load_background_image()
+        self.setup_background()
+        
         self.create_widgets()
-    
+
+    def load_background_image(self):
+        """Load and prepare the background image"""
+        try:
+            image_path = "images/supermarket_background.png"
+            if not os.path.exists(image_path):
+                raise FileNotFoundError(f"Background image {image_path} not found")
+            
+            pil_image = Image.open(image_path)
+            pil_image = pil_image.resize((800, 600), Image.Resampling.LANCZOS)
+            return ctk.CTkImage(light_image=pil_image, dark_image=pil_image, size=(800, 600))
+        except Exception as e:
+            print(f"Error loading background image: {e}")
+            return None
+
+    def setup_background(self):
+        """Set up the background image"""
+        if self.background_image:
+            self.background_label = ctk.CTkLabel(self.root, image=self.background_image, text="")
+            self.background_label.place(x=0, y=0, relwidth=1, relheight=1)
+        else:
+            self.root.configure(fg_color="#e0f2ff")
+
     def create_widgets(self):
-        # Main frame
-        main_frame = ctk.CTkFrame(self.root)
-        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
-        
-        # Title
-        title_label = ctk.CTkLabel(main_frame, text="SuperMarket Management System", 
-                                 font=("Arial", 24, "bold"))
-        title_label.pack(pady=20)
-        
-        # Subtitle
-        subtitle_label = ctk.CTkLabel(main_frame, text="Choose an option to proceed:", 
-                                    font=("Arial", 14))
-        subtitle_label.pack(pady=10)
-        
-        # Buttons frame
-        buttons_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        buttons_frame.pack(pady=20)
-        
-        # Login button
-        login_btn = ctk.CTkButton(buttons_frame, text="Login", width=200, height=40,
-                                fg_color="#2563eb", hover_color="#1d4ed8",
-                                command=self.open_login)
-        login_btn.pack(pady=10)
-        
-        # Sign Up button
-        signup_btn = ctk.CTkButton(buttons_frame, text="Sign Up", width=200, height=40,
-                                 fg_color="#10b981", hover_color="#059669",
-                                 command=self.open_signup)
-        signup_btn.pack(pady=10)
-        
-        # Admin button
-        admin_btn = ctk.CTkButton(buttons_frame, text="Admin Panel", width=200, height=40,
-                                fg_color="#6366f1", hover_color="#4f46e5",
-                                command=self.open_admin_login)
-        admin_btn.pack(pady=10)
-        
-        # Exit button
-        exit_btn = ctk.CTkButton(buttons_frame, text="Exit", width=200, height=40,
-                               fg_color="#ef4444", hover_color="#dc2626",
-                               command=self.root.destroy)
-        exit_btn.pack(pady=10)
-        
-        # Version label
-        version_label = ctk.CTkLabel(main_frame, text="Version 1.0", 
-                                   font=("Arial", 10), text_color="gray")
-        version_label.pack(side="bottom", pady=10)
-    
+        # Buttons placed directly on the root window
+        button_config = {
+            "width": 250,
+            "height": 50,
+            "font": ("Arial", 16, "bold"),
+            "corner_radius": 10,
+            "text_color": "white",
+            "hover_color": "#1e40af"
+        }
+
+        # Position buttons vertically centered
+        login_btn = ctk.CTkButton(self.root, text="Login", fg_color="#2563eb", 
+                                command=self.open_login, **button_config)
+        login_btn.place(relx=0.5, rely=0.35, anchor="center")
+
+        signup_btn = ctk.CTkButton(self.root, text="Sign Up", fg_color="#10b981", 
+                                 command=self.open_signup, **button_config)
+        signup_btn.place(relx=0.5, rely=0.45, anchor="center")
+
+        admin_btn = ctk.CTkButton(self.root, text="Admin Panel", fg_color="#6366f1", 
+                                command=self.open_admin_login, **button_config)
+        admin_btn.place(relx=0.5, rely=0.55, anchor="center")
+
+        exit_btn = ctk.CTkButton(self.root, text="Exit", fg_color="#ef4444", 
+                               command=self.root.destroy, **button_config)
+        exit_btn.place(relx=0.5, rely=0.65, anchor="center")
+
     def open_login(self):
-        self.root.withdraw()  # Hide main window
+        self.root.withdraw()
         try:
             subprocess.run(["python", "login_signup.py"])
         except Exception as e:
             print(f"Error opening login window: {e}")
         self.root.destroy()
-    
+
     def open_signup(self):
-        self.root.withdraw()  # Hide main window
+        self.root.withdraw()
         try:
             subprocess.run(["python", "login_signup.py", "signup"])
         except Exception as e:
             print(f"Error opening signup window: {e}")
         self.root.destroy()
-    
+
     def open_admin_login(self):
-        self.root.withdraw()  # Hide main window
+        self.root.withdraw()
         try:
             subprocess.run(["python", "admin/admin_view.py", "login"])
         except Exception as e:
@@ -308,7 +284,6 @@ class SuperMarketApp:
         self.root.destroy()
 
 def main():
-    # Check database connection
     print("Checking database connection...")
     conn = connect_db()
     if conn:
@@ -318,18 +293,15 @@ def main():
         print("Failed to connect to MySQL, exiting")
         sys.exit(1)
     
-    # Setup database and tables
     print("Setting up database...")
     if not setup_database():
         print("Failed to setup database, exiting")
         messagebox.showerror("Database Error", "Failed to setup database tables")
         sys.exit(1)
     
-    # Check required image files
     print("Checking image files...")
     check_image_files()
     
-    # Start the main application
     print("Starting SuperMarket Management System...")
     root = ctk.CTk()
     app = SuperMarketApp(root)

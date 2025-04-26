@@ -337,7 +337,7 @@ class UserApp:
         # If no products found, display message
         if not products:
             no_products_label = ctk.CTkLabel(self.products_frame, text="No products available", 
-                                          font=("Arial", 16), text_color="gray")
+                                        font=("Arial", 16), text_color="gray")
             no_products_label.pack(pady=30)
         else:
             # Create a frame for grid layout
@@ -363,8 +363,12 @@ class UserApp:
                 
                 # Try to load image
                 try:
-                    if product["image"] and os.path.exists(product["image"]):
-                        img = ctk.CTkImage(light_image=Image.open(product["image"]), size=(150, 150))
+                    if product["image"]:
+                        # Convert binary data to image
+                        import io
+                        image_stream = io.BytesIO(product["image"])
+                        pil_image = Image.open(image_stream)
+                        img = ctk.CTkImage(light_image=pil_image, size=(150, 150))
                         img_label = ctk.CTkLabel(inner_card, image=img, text="")
                         img_label.pack(pady=10)
                     else:
@@ -380,14 +384,23 @@ class UserApp:
                         ctk.CTkLabel(inner_card, text=emoji, font=("Arial", 72)).pack(pady=10)
                 except Exception as e:
                     print(f"Error loading image for {product['name']}: {e}")
-                    ctk.CTkLabel(inner_card, text="🍎", font=("Arial", 72)).pack(pady=10)
+                    # Fallback to emoji
+                    emoji = "🍎"  # default
+                    if "apple" in product["name"].lower():
+                        emoji = "🍎"
+                    elif "banana" in product["name"].lower():
+                        emoji = "🍌"
+                    elif "broccoli" in product["name"].lower():
+                        emoji = "🥦"
+                    
+                    ctk.CTkLabel(inner_card, text=emoji, font=("Arial", 72)).pack(pady=10)
                 
                 # Product details
                 ctk.CTkLabel(inner_card, text=product["name"], 
-                           font=("Arial", 16, "bold"), text_color="black").pack(pady=(5, 0))
+                        font=("Arial", 16, "bold"), text_color="black").pack(pady=(5, 0))
                 
                 ctk.CTkLabel(inner_card, text=product["price"], 
-                           font=("Arial", 16), text_color="black").pack(pady=(0, 10))
+                        font=("Arial", 16), text_color="black").pack(pady=(0, 10))
                 
                 # Quantity selector frame
                 quantity_frame = ctk.CTkFrame(inner_card, fg_color="white")
@@ -427,16 +440,15 @@ class UserApp:
                     fg_color="#2563eb", hover_color="#1d4ed8", 
                     font=("Arial", 14), height=35,
                     command=lambda id=product["id"], name=product["name"], 
-                                  price=product["price"], raw_price=product["raw_price"],
-                                  qv=quantity_var_id: 
-                           self.add_to_cart(id, name, price, raw_price, qv)
+                                price=product["price"], raw_price=product["raw_price"],
+                                qv=quantity_var_id: 
+                            self.add_to_cart(id, name, price, raw_price, qv)
                 )
                 add_cart_btn.pack(pady=5)
             
             # Configure grid column weights to make them equal width
             for i in range(products_per_row):
-                grid_frame.columnconfigure(i, weight=1)
-    
+                grid_frame.columnconfigure(i, weight=1)    
     def increase_quantity(self, quantity_var_id):
         var = getattr(self, quantity_var_id)
         current_val = int(var.get())
@@ -453,7 +465,9 @@ class UserApp:
             connection = connect_db()
             cursor = connection.cursor(dictionary=True)
             
-            cursor.execute("SELECT product_id, name, price, image_path, stock FROM Products WHERE stock > 0")
+            cursor.execute(
+                "SELECT product_id, name, price, image, stock FROM Products WHERE stock > 0 AND status = 'active'"
+            )
             products_db = cursor.fetchall()
             
             # Format products for display
@@ -465,7 +479,7 @@ class UserApp:
                     "name": product["name"],
                     "price": price_formatted,
                     "raw_price": float(product["price"]),
-                    "image": product["image_path"] if product["image_path"] else None,
+                    "image": product["image"],  # Binary data or None
                     "stock": product["stock"]
                 })
             
@@ -477,7 +491,7 @@ class UserApp:
             if connection and connection.is_connected():
                 cursor.close()
                 connection.close()
-    
+        
     def search_products(self, search_query):
         """Search products by name"""
         if not search_query:
@@ -489,7 +503,7 @@ class UserApp:
             
             # Use LIKE for partial matching
             cursor.execute(
-                "SELECT product_id, name, price, image_path, stock FROM Products WHERE stock > 0 AND name LIKE %s",
+                "SELECT product_id, name, price, image, stock FROM Products WHERE stock > 0 AND status = 'active' AND name LIKE %s",
                 (f"%{search_query}%",)
             )
             products_db = cursor.fetchall()
@@ -503,7 +517,7 @@ class UserApp:
                     "name": product["name"],
                     "price": price_formatted,
                     "raw_price": float(product["price"]),
-                    "image": product["image_path"] if product["image_path"] else None,
+                    "image": product["image"],  # Binary data or None
                     "stock": product["stock"]
                 })
             
@@ -515,7 +529,7 @@ class UserApp:
             if connection and connection.is_connected():
                 cursor.close()
                 connection.close()
-    
+
     def handle_search(self):
         search_query = self.search_entry.get().strip()
         self.refresh_products_display(search_query)
