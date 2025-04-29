@@ -2,6 +2,12 @@ import sys
 import os
 import numpy as np
 from matplotlib import pyplot as plt
+import tkinter as tk
+from tkinter import ttk
+import customtkinter as ctk
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 # Add parent directory to path so we can import from other modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -2864,6 +2870,8 @@ class AdminApp:
             print(f"Graph error: {e}")
     
 
+
+
     def setup_user_activity_tab(self, parent_frame):
         # Main frame
         report_frame = ctk.CTkFrame(parent_frame, fg_color="white", corner_radius=10)
@@ -2882,116 +2890,64 @@ class AdminApp:
         # User Type
         type_frame = ctk.CTkFrame(self.user_options_panel, fg_color="transparent")
         type_frame.pack(fill="x", padx=20, pady=5)
-        
         type_label = ctk.CTkLabel(type_frame, text="User Type:", font=("Arial", 14))
         type_label.pack(side="left", padx=(0, 10))
-        
         self.user_type_var = ctk.StringVar(value="all_users")
-        
-        all_radio = ctk.CTkRadioButton(type_frame, text="All Users", 
-                                    variable=self.user_type_var, value="all_users",
-                                    font=("Arial", 14))
+        all_radio = ctk.CTkRadioButton(type_frame, text="All Users", variable=self.user_type_var, value="all_users", font=("Arial", 14))
         all_radio.pack(side="left", padx=(0, 10))
-        
-        admin_radio = ctk.CTkRadioButton(type_frame, text="Admins Only", 
-                                        variable=self.user_type_var, value="admins",
-                                        font=("Arial", 14))
+        admin_radio = ctk.CTkRadioButton(type_frame, text="Admins Only", variable=self.user_type_var, value="admins", font=("Arial", 14))
         admin_radio.pack(side="left", padx=(0, 10))
-        
-        customer_radio = ctk.CTkRadioButton(type_frame, text="Customers Only", 
-                                            variable=self.user_type_var, value="customers",
-                                            font=("Arial", 14))
+        customer_radio = ctk.CTkRadioButton(type_frame, text="Customers Only", variable=self.user_type_var, value="customers", font=("Arial", 14))
         customer_radio.pack(side="left")
         
         # Activity Filter
         activity_frame = ctk.CTkFrame(self.user_options_panel, fg_color="transparent")
         activity_frame.pack(fill="x", padx=20, pady=5)
-        
         activity_label = ctk.CTkLabel(activity_frame, text="Activity:", font=("Arial", 14))
         activity_label.pack(side="left", padx=(0, 10))
-        
         self.user_activity_var = ctk.StringVar(value="all_activity")
-        
-        all_activity_radio = ctk.CTkRadioButton(activity_frame, text="All Activity", 
-                                            variable=self.user_activity_var, value="all_activity",
-                                            font=("Arial", 14))
+        all_activity_radio = ctk.CTkRadioButton(activity_frame, text="All Activity", variable=self.user_activity_var, value="all_activity", font=("Arial", 14))
         all_activity_radio.pack(side="left", padx=(0, 10))
-        
-        orders_radio = ctk.CTkRadioButton(activity_frame, text="Orders Only", 
-                                        variable=self.user_activity_var, value="orders",
-                                        font=("Arial", 14))
+        orders_radio = ctk.CTkRadioButton(activity_frame, text="Orders Only", variable=self.user_activity_var, value="orders", font=("Arial", 14))
         orders_radio.pack(side="left")
         
         # Time Period
         period_frame = ctk.CTkFrame(self.user_options_panel, fg_color="transparent")
         period_frame.pack(fill="x", padx=20, pady=5)
-        
         period_label = ctk.CTkLabel(period_frame, text="Time Period:", font=("Arial", 14))
         period_label.pack(side="left", padx=(0, 10))
-        
-        self.user_period_var = ctk.StringVar(value="last_30_days")
-        
-        last_7_radio = ctk.CTkRadioButton(period_frame, text="Last 7 Days", 
-                                        variable=self.user_period_var, value="last_7_days",
-                                        font=("Arial", 14))
+        self.user_period_var = ctk.StringVar(value="last_7_days")
+        last_7_radio = ctk.CTkRadioButton(period_frame, text="Last 7 Days", variable=self.user_period_var, value="last_7_days", font=("Arial", 14))
         last_7_radio.pack(side="left", padx=(0, 10))
-        
-        last_30_radio = ctk.CTkRadioButton(period_frame, text="Last 30 Days", 
-                                        variable=self.user_period_var, value="last_30_days",
-                                        font=("Arial", 14))
+        last_30_radio = ctk.CTkRadioButton(period_frame, text="Last 30 Days", variable=self.user_period_var, value="last_30_days", font=("Arial", 14))
         last_30_radio.pack(side="left", padx=(0, 10))
-        
-        all_time_radio = ctk.CTkRadioButton(period_frame, text="All Time", 
-                                            variable=self.user_period_var, value="all_time",
-                                            font=("Arial", 14))
+        all_time_radio = ctk.CTkRadioButton(period_frame, text="All Time", variable=self.user_period_var, value="all_time", font=("Arial", 14))
         all_time_radio.pack(side="left")
         
         # Chart Type
         chart_frame = ctk.CTkFrame(self.user_options_panel, fg_color="transparent")
         chart_frame.pack(fill="x", padx=20, pady=5)
-        
         chart_label = ctk.CTkLabel(chart_frame, text="Chart Type:", font=("Arial", 14))
         chart_label.pack(side="left", padx=(0, 10))
-        
         self.user_chart_var = ctk.StringVar(value="bar")
-        
-        bar_radio = ctk.CTkRadioButton(chart_frame, text="Bar Chart", 
-                                    variable=self.user_chart_var, value="bar",
-                                    font=("Arial", 14))
+        bar_radio = ctk.CTkRadioButton(chart_frame, text="Bar Chart", variable=self.user_chart_var, value="bar", font=("Arial", 14))
         bar_radio.pack(side="left", padx=(0, 10))
-        
-        pie_radio = ctk.CTkRadioButton(chart_frame, text="Pie Chart", 
-                                    variable=self.user_chart_var, value="pie",
-                                    font=("Arial", 14))
+        pie_radio = ctk.CTkRadioButton(chart_frame, text="Pie Chart", variable=self.user_chart_var, value="pie", font=("Arial", 14))
         pie_radio.pack(side="left", padx=(0, 10))
-        
-        line_radio = ctk.CTkRadioButton(chart_frame, text="Line Chart", 
-                                        variable=self.user_chart_var, value="line",
-                                        font=("Arial", 14))
+        line_radio = ctk.CTkRadioButton(chart_frame, text="Line Chart", variable=self.user_chart_var, value="line", font=("Arial", 14))
         line_radio.pack(side="left")
         
         # Report Format
         format_frame = ctk.CTkFrame(self.user_options_panel, fg_color="transparent")
-        format_frame.pack(fill="x", padx=20, pady=5)
-        
+        format_frame.pack(fill="x", padx=20, pady=(5, 10))
         format_label = ctk.CTkLabel(format_frame, text="Export Format:", font=("Arial", 14))
         format_label.pack(side="left", padx=(0, 10))
-        
         self.user_format_var = ctk.StringVar(value="csv")
-        
-        csv_radio = ctk.CTkRadioButton(format_frame, text="CSV", 
-                                    variable=self.user_format_var, value="csv",
-                                    font=("Arial", 14))
+        csv_radio = ctk.CTkRadioButton(format_frame, text="CSV", variable=self.user_format_var, value="csv", font=("Arial", 14))
         csv_radio.pack(side="left", padx=(0, 10))
-        
-        txt_radio = ctk.CTkRadioButton(format_frame, text="Text", 
-                                    variable=self.user_format_var, value="txt",
-                                    font=("Arial", 14))
+        txt_radio = ctk.CTkRadioButton(format_frame, text="Text", variable=self.user_format_var, value="txt", font=("Arial", 14))
         txt_radio.pack(side="left", padx=(0, 10))
-        
-        pdf_radio = ctk.CTkRadioButton(format_frame, text="PDF", 
-                                    variable=self.user_format_var, value="pdf",
-                                    font=("Arial", 14))
+        pdf_radio = ctk.CTkRadioButton(format_frame, text="PDF", variable=self.user_format_var, value="pdf", font=("Arial", 14))
         pdf_radio.pack(side="left")
         
         # Bottom panel - Buttons and Preview
@@ -3029,7 +2985,7 @@ class AdminApp:
                                         fg_color="white", segmented_button_fg_color="#e5e7eb",
                                         segmented_button_selected_color="#3b82f6",
                                         segmented_button_selected_hover_color="#2563eb")
-        self.user_tabs.pack(fill="both", expand=True, padx=20, pady=(5, 20))
+        self.user_tabs.pack(fill="both", expand=True, padx=10, pady=10)
         
         self.user_graph_tab = self.user_tabs.add("Graph View")
         self.user_text_tab = self.user_tabs.add("Text View")
@@ -3044,15 +3000,111 @@ class AdminApp:
                                             font=("Arial", 14), text_color="gray")
         self.user_graph_message.pack(expand=True)
         
-        # Text preview area
-        self.user_preview = ctk.CTkTextbox(self.user_text_tab, fg_color="white", corner_radius=5,
-                                        font=("Arial", 12))
-        self.user_preview.pack(fill="both", expand=True, padx=10, pady=10)
-        self.user_preview.insert("1.0", "Report preview will appear here. Generate a report to see data.")
+        # Frame for table
+        table_frame = tk.Frame(self.user_text_tab)
+        table_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        
+        # Create Treeview for tabular display
+        columns = ("order_id", "date", "customer", "status", "total_amount")
+        self.user_table = ttk.Treeview(table_frame, columns=columns, show="headings", height=10)
+        
+        # Define headings
+        self.user_table.heading("order_id", text="Order ID")
+        self.user_table.heading("date", text="Date")
+        self.user_table.heading("customer", text="Customer")
+        self.user_table.heading("status", text="Status")
+        self.user_table.heading("total_amount", text="Total Amount")
+        
+        # Define column widths
+        self.user_table.column("order_id", width=100, anchor="center")
+        self.user_table.column("date", width=120, anchor="center")
+        self.user_table.column("customer", width=150, anchor="center")
+        self.user_table.column("status", width=100, anchor="center")
+        self.user_table.column("total_amount", width=100, anchor="center")
+        
+        # Add grid lines and styling
+        style = ttk.Style()
+        style.configure("Treeview", rowheight=25, background="#f8fafc", foreground="black",
+                        fieldbackground="#f8fafc", borderwidth=1, relief="solid")
+        style.configure("Treeview.Heading", font=("Arial", 12, "bold"))
+        style.configure("Treeview", font=("Arial", 12))
+        
+        # Add scrollbars
+        vsb = ttk.Scrollbar(table_frame, orient="vertical", command=self.user_table.yview)
+        hsb = ttk.Scrollbar(table_frame, orient="horizontal", command=self.user_table.xview)
+        self.user_table.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
+        
+        # Layout the table and scrollbars
+        self.user_table.grid(row=0, column=0, sticky="nsew")
+        vsb.grid(row=0, column=1, sticky="ns")
+        hsb.grid(row=1, column=0, sticky="ew")
+        table_frame.grid_rowconfigure(0, weight=1)
+        table_frame.grid_columnconfigure(0, weight=1)
+        
+        # Initial data
+        self.user_table.insert("", "end", values=("2", "2025-04-23 18:51", "jashwanth vemula", "completed", "$6.00"))
+        self.user_table.insert("", "end", values=("3", "2025-04-23 23:44", "jashwanth vemula", "completed", "$14.00"))
         
         # Store report data for download
         self.user_report_data = None
         self.user_data = None
+
+    def generate_user_report(self):
+        # Clear existing data
+        for item in self.user_table.get_children():
+            self.user_table.delete(item)
+        
+        # Simulate generating report data (replace with actual data logic)
+        sample_data = [
+            ("2", "2025-04-23 18:51", "jashwanth vemula", "completed", "$6.00"),
+            ("3", "2025-04-23 23:44", "jashwanth vemula", "completed", "$14.00")
+        ]
+        for row in sample_data:
+            self.user_table.insert("", "end", values=row)
+        
+        # Store data for download
+        self.user_report_data = sample_data
+        self.user_download_btn.configure(state="normal")
+
+    def download_user_report(self):
+        if self.user_report_data:
+            import csv
+            format_type = self.user_format_var.get()
+            if format_type == "csv":
+                with open("user_activity_report.csv", "w", newline="") as f:
+                    writer = csv.writer(f)
+                    writer.writerow(["Order ID", "Date", "Customer", "Status", "Total Amount"])
+                    writer.writerows(self.user_report_data)
+                print("Report downloaded as user_activity_report.csv")
+            elif format_type == "txt":
+                with open("user_activity_report.txt", "w") as f:
+                    f.write("Order ID,Date,Customer,Status,Total Amount\n")
+                    for row in self.user_report_data:
+                        f.write(",".join(row) + "\n")
+                print("Report downloaded as user_activity_report.txt")
+            elif format_type == "pdf":
+                
+                pdf = SimpleDocTemplate("user_activity_report.pdf", pagesize=letter)
+                table_data = [["Order ID", "Date", "Customer", "Status", "Total Amount"]] + list(self.user_report_data)
+                table = Table(table_data)
+                table.setStyle(TableStyle([
+                    ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                    ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                    ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                    ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                    ('FONTSIZE', (0, 0), (-1, 0), 14),
+                    ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                    ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                    ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+                    ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                    ('FONTSIZE', (0, 1), (-1, -1), 12),
+                    ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ]))
+                pdf.build([table])
+                print("Report downloaded as user_activity_report.pdf")
+        else:
+            print("No report data to download")
+
     def toggle_custom_date_range(self):
         """Show or hide custom date range based on selection"""
         if self.sales_period_var.get() == "custom_range":
@@ -3678,7 +3730,7 @@ class AdminApp:
             return header + "\n".join(rows)
         else:
             # Text format (more detailed)
-            report = "INVENTORY REPORT\n"
+            report = "ADMIN INVENTORY REPORT\n"
             report += "=" * 50 + "\n\n"
             
             # Summary

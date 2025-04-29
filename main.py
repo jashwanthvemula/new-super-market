@@ -37,6 +37,10 @@ def setup_database():
         cursor.execute(f"USE {db_name}")
         
         print("Creating Users table")
+        cursor.execute("ALTER TABLE Users DROP COLUMN image_path;")
+        cursor.execute("ALTER TABLE Users ADD COLUMN image BLOB;")
+
+
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS Users (
             user_id INT AUTO_INCREMENT PRIMARY KEY,

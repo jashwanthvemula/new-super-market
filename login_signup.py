@@ -164,8 +164,8 @@ class LoginApp:
         
         # Update main frame
         self.main_frame.place(relx=0.5, rely=0.5, anchor="center", 
-                         relwidth=min(0.95, 1400/width) if width > 800 else 0.98, 
-                         relheight=min(0.9, 900/height) if height > 600 else 0.98)
+                            relwidth=min(0.95, 1400/width) if width > 800 else 0.98, 
+                            relheight=min(0.9, 900/height) if height > 600 else 0.98)
         
         # Adjust layout based on screen size
         if width < 1200:
@@ -186,23 +186,20 @@ class LoginApp:
                 self.subtitle_label.configure(font=("Arial", 12))
                 self.login_header.configure(font=("Arial", 16, "bold"))
                 self.login_instruction.configure(font=("Arial", 12))
-                # Reduce vertical spacing
                 self.title_label.pack(anchor="w", pady=(0, 3))
                 self.subtitle_label.pack(anchor="w", pady=(0, 15))
                 self.login_header.pack(anchor="w", pady=(0, 3))
                 self.login_instruction.pack(anchor="w", pady=(0, 15))
             else:
-                # Reset to original values for larger screens
                 self.title_label.configure(font=("Arial", 28, "bold"))
                 self.subtitle_label.configure(font=("Arial", 14))
                 self.login_header.configure(font=("Arial", 18, "bold"))
                 self.login_instruction.configure(font=("Arial", 14))
-                # Reset spacing
                 self.title_label.pack(anchor="w", pady=(0, 5))
                 self.subtitle_label.pack(anchor="w", pady=(0, 30))
                 self.login_header.pack(anchor="w", pady=(0, 5))
                 self.login_instruction.pack(anchor="w", pady=(0, 30))
-                
+            
         else:
             # Side by side on larger screens
             self.left_frame.place(relx=0, rely=0, relwidth=0.5, relheight=1)
@@ -216,36 +213,34 @@ class LoginApp:
                 img_size = min(int(width*0.2), 252)
                 self.img.configure(size=(img_size, img_size))
             
-        # Ensure that bottom elements (signup and forgot password) are visible
-        # This needs to be done after the above layout adjustments
+            # Reset to original values for larger screens
+            self.title_label.configure(font=("Arial", 28, "bold"))
+            self.subtitle_label.configure(font=("Arial", 14))
+            self.login_header.configure(font=("Arial", 18, "bold"))
+            self.login_instruction.configure(font=("Arial", 14))
+            self.title_label.pack(anchor="w", pady=(0, 5))
+            self.subtitle_label.pack(anchor="w", pady=(0, 30))
+            self.login_header.pack(anchor="w", pady=(0, 5))
+            self.login_instruction.pack(anchor="w", pady=(0, 30))
         
-        # Get current form container dimensions
-        form_width = self.form_container.winfo_width()
+        # Ensure bottom elements are visible
         form_height = self.form_container.winfo_height()
-        
-        # Calculate content height by summing up all widgets' heights and spacing
-        # This is an approximation
         content_height = sum([w.winfo_reqheight() for w in self.form_container.winfo_children() if hasattr(w, 'winfo_reqheight')])
         
-        # If content might overflow, adjust the layout to make it more compact
-        if content_height > form_height * 0.9:  # If content takes more than 90% of available height
-            # Make elements more compact
-            self.login_btn.pack(fill="x", pady=(5, 10))  # Reduce padding around login button
-            self.signup_frame.pack(fill="x", pady=(5, 0))  # Reduce padding above signup frame
-            
-            # Ensure forgot password is visible
+        if content_height > form_height * 0.9:
+            self.login_btn.pack(fill="x", pady=(5, 10))
+            self.signup_frame.pack(fill="x", pady=(5, 0))
             self.forgot_pwd_label.pack(anchor="w", pady=(3, 0))
         else:
-            # Normal spacing
             self.login_btn.pack(fill="x", pady=(10, 20))
             self.signup_frame.pack(fill="x", pady=(10, 0))
             self.forgot_pwd_label.pack(anchor="w", pady=(5, 0))
-    
+        
     def on_password_change(self):
         password = self.password_entry.get()
         score, message = check_password_strength(password)
-        
-        # Update strength label
+            
+            # Update strength label
         if password:
             if score == 0:
                 color = "#ef4444"  # Red
@@ -255,7 +250,7 @@ class LoginApp:
                 color = "#3b82f6"  # Blue
             else:
                 color = "#10b981"  # Green
-                
+                    
             self.password_strength_label.configure(text=message, text_color=color)
             self.password_strength_label.pack(anchor="w", pady=(5, 10))
         else:
@@ -270,8 +265,6 @@ class LoginApp:
             self.password_entry.configure(show="")
             self.password_toggle_btn.configure(text="👁️‍🗨️")  # Eye with speech bubble to indicate visible
     
-# This is an update to the login_user method in login_signup.py
-
     def login_user(self):
         username = self.username_entry.get()
         password = self.password_entry.get()
@@ -333,8 +326,8 @@ class SignupApp:
     def __init__(self, root):
         self.root = root
         self.root.title("SuperMarket - Sign Up")
-        self.root.geometry("1500x1000")  # Starting size
-        self.root.minsize(700, 800)  # Minimum window size
+        self.root.geometry("1200x700")  # Adjusted to match LoginApp for consistency
+        self.root.minsize(800, 600)  # Minimum window size
         
         self.img = None  # Store image reference
         self.setup_ui()
@@ -358,84 +351,75 @@ class SignupApp:
         # SuperMarket Title
         self.title_label = ctk.CTkLabel(self.left_frame, text="SuperMarket", 
                                       font=("Arial", 28, "bold"), text_color="#2563eb")
-        self.title_label.place(relx=0.1, rely=0.1)
+        self.title_label.place(relx=0.1, rely=0.05)
         
         # Subtitle
         self.subtitle_label = ctk.CTkLabel(self.left_frame, text="Manage your shopping experience\nseamlessly.", 
                                          font=("Arial", 14), text_color="gray")
-        self.subtitle_label.place(relx=0.1, rely=0.17)
+        self.subtitle_label.place(relx=0.1, rely=0.12)
         
         # Create Account Header
         self.account_header = ctk.CTkLabel(self.left_frame, text="Create your account", 
                                         font=("Arial", 18, "bold"), text_color="black")
-        self.account_header.place(relx=0.1, rely=0.3)
+        self.account_header.place(relx=0.1, rely=0.25)
         
         # Signup Instruction
         self.signup_instruction = ctk.CTkLabel(self.left_frame, text="Fill in the details below to sign up.", 
                                             font=("Arial", 14), text_color="gray")
-        self.signup_instruction.place(relx=0.1, rely=0.37)
-        
-        # First Name Label
-        self.first_name_label = ctk.CTkLabel(self.left_frame, text="First Name", font=("Arial", 14), text_color="gray")
-        self.first_name_label.place(relx=0.5, rely=0.30)
+        self.signup_instruction.place(relx=0.1, rely=0.32)
         
         # First Name Entry
-        self.first_name_entry = ctk.CTkEntry(self.left_frame, font=("Arial", 14), height=40, width=300, 
+        self.first_name_entry = ctk.CTkEntry(self.left_frame, placeholder_text="First Name", font=("Arial", 14), height=40, width=300, 
                                           border_color="#e5e7eb", border_width=1, corner_radius=5)
-        self.first_name_entry.place(relx=0.1, rely=0.48)
-        
-        # Last Name Label
-        self.last_name_label = ctk.CTkLabel(self.left_frame, text="Last Name", font=("Arial", 14), text_color="gray")
-        self.last_name_label.place(relx=0.1, rely=0.54)
+        self.first_name_entry.place(relx=0.1, rely=0.40)
         
         # Last Name Entry
-        self.last_name_entry = ctk.CTkEntry(self.left_frame, font=("Arial", 14), height=40, width=300, 
+        self.last_name_entry = ctk.CTkEntry(self.left_frame, placeholder_text="Last Name", font=("Arial", 14), height=40, width=300, 
                                          border_color="#e5e7eb", border_width=1, corner_radius=5)
-        self.last_name_entry.place(relx=0.1, rely=0.58)
-        
-        # Email Label
-        self.email_label = ctk.CTkLabel(self.left_frame, text="Email", font=("Arial", 14), text_color="gray")
-        self.email_label.place(relx=0.1, rely=0.64)
+        self.last_name_entry.place(relx=0.1, rely=0.48)
         
         # Email Entry
-        self.email_entry = ctk.CTkEntry(self.left_frame, font=("Arial", 14), height=40, width=300, 
+        self.email_entry = ctk.CTkEntry(self.left_frame, placeholder_text="Email", font=("Arial", 14), height=40, width=300, 
                                       border_color="#e5e7eb", border_width=1, corner_radius=5)
-        self.email_entry.place(relx=0.1, rely=0.68)
-        
-        # Secret Key Label
-        self.secret_key_label = ctk.CTkLabel(self.left_frame, text="Secret Key", font=("Arial", 14), text_color="gray")
-        self.secret_key_label.place(relx=0.1, rely=0.74)
+        self.email_entry.place(relx=0.1, rely=0.56)
         
         # Secret Key Entry
-        self.secret_entry = ctk.CTkEntry(self.left_frame, font=("Arial", 14), height=40, width=300, 
+        self.secret_entry = ctk.CTkEntry(self.left_frame, placeholder_text="Secret Key", font=("Arial", 14), height=40, width=300, 
                                       border_color="#e5e7eb", border_width=1, corner_radius=5)
-        self.secret_entry.place(relx=0.1, rely=0.78)
-        
-        # Password Label
-        self.password_label = ctk.CTkLabel(self.left_frame, text="Password", font=("Arial", 14), text_color="gray")
-        self.password_label.place(relx=0.1, rely=0.84)
+        self.secret_entry.place(relx=0.1, rely=0.64)
         
         # Password Entry
-        self.password_entry = ctk.CTkEntry(self.left_frame, font=("Arial", 14), height=40, width=300, 
+        self.password_entry = ctk.CTkEntry(self.left_frame, placeholder_text="Password", font=("Arial", 14), height=40, width=300, 
                                          border_color="#e5e7eb", border_width=1, corner_radius=5, show="*")
-        self.password_entry.place(relx=0.1, rely=0.88)
+        self.password_entry.place(relx=0.1, rely=0.72)
         self.password_entry.bind("<KeyRelease>", self.on_password_change)
         
         # Password Strength Label
         self.password_strength_label = ctk.CTkLabel(self.left_frame, text="", font=("Arial", 12), text_color="gray")
-        self.password_strength_label.place(relx=0.1, rely=0.92)
+        self.password_strength_label.place(relx=0.1, rely=0.78)
         
         # Sign Up Button
         self.signup_btn = ctk.CTkButton(self.left_frame, text="Sign Up", font=("Arial", 14, "bold"), 
                                       fg_color="#2563eb", hover_color="#1d4ed8",
                                       height=40, width=300, corner_radius=5, command=self.register_user)
-        self.signup_btn.place(relx=0.1, rely=0.94)
+        self.signup_btn.place(relx=0.1, rely=0.84)
         
-        # Already have an account text
-        self.login_label = ctk.CTkLabel(self.left_frame, text="Already have an account? Login", 
-                                      font=("Arial", 14), text_color="#2563eb", cursor="hand2")
-        self.login_label.place(relx=0.1, rely=0.98)
-        self.login_label.bind("<Button-1>", lambda e: self.open_login())
+        # Bottom options frame - contains login link
+        self.bottom_options_frame = ctk.CTkFrame(self.left_frame, fg_color="transparent")
+        self.bottom_options_frame.place(relx=0.1, rely=0.90)
+        
+        # Login Text
+        self.login_frame = ctk.CTkFrame(self.bottom_options_frame, fg_color="transparent")
+        self.login_frame.pack(fill="x", pady=(5, 5))
+        
+        self.login_label = ctk.CTkLabel(self.login_frame, text="Already have an account?", 
+                                       font=("Arial", 14), text_color="gray")
+        self.login_label.pack(side="left", padx=(0, 5))
+        
+        self.login_link = ctk.CTkLabel(self.login_frame, text="Login", 
+                                      font=("Arial", 14, "bold"), text_color="#2563eb", cursor="hand2")
+        self.login_link.pack(side="left")
+        self.login_link.bind("<Button-1>", lambda e: self.open_login())
         
         # Right Side (Image)
         self.right_frame = ctk.CTkFrame(self.main_frame, fg_color="#EBF3FF", corner_radius=0)
@@ -470,7 +454,7 @@ class SignupApp:
         # Adjust main frame
         self.main_frame.place(relx=0.5, rely=0.5, anchor="center", 
                             relwidth=min(0.95, 1200/width) if width > 800 else 0.98, 
-                            relheight=min(0.9, 900/height) if height > 700 else 0.98)
+                            relheight=min(0.9, 900/height) if height > 600 else 0.98)
         
         # If window is narrow, stack the frames vertically
         if width < 1000:
@@ -480,8 +464,8 @@ class SignupApp:
             # Adjust form elements for narrower width
             form_width = min(300, width * 0.8)
             form_relx = 0.5
-            form_rely_start = 0.12
-            form_rely_step = 0.09
+            form_rely_start = 0.05
+            form_rely_step = 0.07  # Reduced step for tighter layout on smaller screens
             anchor = "center"
             
             # Adjust image size
@@ -496,7 +480,7 @@ class SignupApp:
             
             form_width = min(300, (width * 0.5) * 0.8)
             form_relx = 0.1
-            form_rely_start = 0.1
+            form_rely_start = 0.05
             form_rely_step = 0.06
             anchor = "w"
             
@@ -512,15 +496,13 @@ class SignupApp:
         
         # Adjust all field positions based on the new layout
         field_rely = form_rely_start + form_rely_step * 5
-        for field in [
-            (self.first_name_label, self.first_name_entry),
-            (self.last_name_label, self.last_name_entry),
-            (self.email_label, self.email_entry),
-            (self.secret_key_label, self.secret_entry),
-            (self.password_label, self.password_entry)
+        for entry in [
+            self.first_name_entry,
+            self.last_name_entry,
+            self.email_entry,
+            self.secret_entry,
+            self.password_entry
         ]:
-            label, entry = field
-            label.place(relx=form_relx, rely=field_rely, anchor=anchor)
             entry.place(relx=form_relx, rely=field_rely + form_rely_step*0.6, anchor=anchor)
             entry.configure(width=form_width)
             field_rely += form_rely_step * 1.8
@@ -528,10 +510,10 @@ class SignupApp:
         # Place password strength label
         self.password_strength_label.place(relx=form_relx, rely=field_rely - form_rely_step, anchor=anchor)
         
-        # Place buttons at the bottom
+        # Place buttons and bottom options frame
         self.signup_btn.place(relx=form_relx, rely=field_rely + form_rely_step*0.4, anchor=anchor)
         self.signup_btn.configure(width=form_width)
-        self.login_label.place(relx=form_relx, rely=field_rely + form_rely_step*1.2, anchor=anchor)
+        self.bottom_options_frame.place(relx=form_relx, rely=field_rely + form_rely_step*1.2, anchor=anchor)
         
         # Adjust image container
         if width < 1000:
@@ -585,7 +567,6 @@ class SignupApp:
             
             # Use email as username
             username = email
-            
             cursor.execute(
                 "INSERT INTO Users (first_name, last_name, username, email, password, role, secret_key) VALUES (%s, %s, %s, %s, %s, %s, %s)",
                 (first_name, last_name, username, email, hashed_password, "user", secret_key)
