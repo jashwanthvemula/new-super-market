@@ -37,8 +37,8 @@ def setup_database():
         cursor.execute(f"USE {db_name}")
         
         print("Creating Users table")
-        cursor.execute("ALTER TABLE Users DROP COLUMN image_path;")
-        cursor.execute("ALTER TABLE Users ADD COLUMN image BLOB;")
+        #cursor.execute("ALTER TABLE Users DROP COLUMN image_path;")
+        #cursor.execute("ALTER TABLE Users ADD COLUMN image BLOB;")
 
 
         cursor.execute("""
@@ -236,32 +236,43 @@ class SuperMarketApp:
             self.root.configure(fg_color="#e0f2ff")
 
     def create_widgets(self):
-        # Buttons placed directly on the root window
-        button_config = {
-            "width": 250,
-            "height": 50,
+        bg_image = ctk.CTkImage(Image.open("images/landing.jpg"), size=(900, 600))
+
+        # Background label with image
+        bg_label = ctk.CTkLabel(self.root, image=bg_image, text="")
+        bg_label.place(x=0, y=0, relwidth=1, relheight=1)
+
+        # Buttons container frame (transparent background)
+        buttons_frame = ctk.CTkFrame(self.root, fg_color="transparent")
+        buttons_frame.place(relx=0.01, rely=0.98, anchor="sw")  # Closer to the bottom-left
+
+        # Common button styles with semi-transparent background
+        button_style = {
+            "width": 130,
+            "height": 45,
             "font": ("Arial", 16, "bold"),
-            "corner_radius": 10,
-            "text_color": "white",
-            "hover_color": "#1e40af"
+            "corner_radius": 15,  # Rounded buttons
+            "fg_color": "#3a7ebf",  # Semi-transparent blue that matches the theme
+            "hover_color": "#2a5d8f",  # Darker blue on hover
+            "text_color": "#ffffff",  # White text for visibility
+            "border_width": 2,
+            "border_color": "#ffffff"  # White border for better visibility
         }
+        
+        # Login Button
+        login_btn = ctk.CTkButton(buttons_frame, text="Login",
+                                command=self.open_login, **button_style)
+        login_btn.pack(side="left", padx=10)
 
-        # Position buttons vertically centered
-        login_btn = ctk.CTkButton(self.root, text="Login", fg_color="#2563eb", 
-                                command=self.open_login, **button_config)
-        login_btn.place(relx=0.5, rely=0.35, anchor="center")
+        # Sign Up Button
+        signup_btn = ctk.CTkButton(buttons_frame, text="Sign Up",
+                                command=self.open_signup, **button_style)
+        signup_btn.pack(side="left", padx=10)
 
-        signup_btn = ctk.CTkButton(self.root, text="Sign Up", fg_color="#10b981", 
-                                 command=self.open_signup, **button_config)
-        signup_btn.place(relx=0.5, rely=0.45, anchor="center")
-
-        admin_btn = ctk.CTkButton(self.root, text="Admin Panel", fg_color="#6366f1", 
-                                command=self.open_admin_login, **button_config)
-        admin_btn.place(relx=0.5, rely=0.55, anchor="center")
-
-        exit_btn = ctk.CTkButton(self.root, text="Exit", fg_color="#ef4444", 
-                               command=self.root.destroy, **button_config)
-        exit_btn.place(relx=0.5, rely=0.65, anchor="center")
+        # Admin Panel Button
+        admin_btn = ctk.CTkButton(buttons_frame, text="Admin Panel",
+                                command=self.open_admin_login, **button_style)
+        admin_btn.pack(side="left", padx=10)
 
     def open_login(self):
         self.root.withdraw()
