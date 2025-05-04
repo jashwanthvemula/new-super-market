@@ -37,10 +37,6 @@ def setup_database():
         cursor.execute(f"USE {db_name}")
         
         print("Creating Users table")
-        #cursor.execute("ALTER TABLE Users DROP COLUMN image_path;")
-        #cursor.execute("ALTER TABLE Users ADD COLUMN image BLOB;")
-
-
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS Users (
             user_id INT AUTO_INCREMENT PRIMARY KEY,
@@ -51,7 +47,9 @@ def setup_database():
             role VARCHAR(20) NOT NULL,
             secret_key VARCHAR(255),
             email VARCHAR(100),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status VARCHAR(20) DEFAULT 'active',
+            image BLOB
         )
         """)
         
@@ -62,8 +60,9 @@ def setup_database():
             name VARCHAR(100) UNIQUE NOT NULL,
             price DECIMAL(10, 2) NOT NULL,
             stock INT NOT NULL DEFAULT 0,
-            image_path VARCHAR(255),
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            status VARCHAR(20) DEFAULT 'available',
+            image BLOB
         )
         """)
         
@@ -131,14 +130,14 @@ def create_default_user(cursor, conn):
             from utils_file import hash_password
             hashed_password = hash_password("admin123")
             cursor.execute("""
-            INSERT INTO Users (first_name, last_name, username, email, password, role)
-            VALUES ('Admin', 'User', 'admin123', 'admin@supermarket.com', %s, 'admin')
+            INSERT INTO Users (first_name, last_name, username, email, password, role, status, image)
+            VALUES ('Admin', 'User', 'admin123', 'admin@supermarket.com', %s, 'admin', 'active', NULL)
             """, (hashed_password,))
             
             hashed_password = hash_password("user123")
             cursor.execute("""
-            INSERT INTO Users (first_name, last_name, username, email, password, role)
-            VALUES ('John', 'Doe', 'user1', 'user1@example.com', %s, 'user')
+            INSERT INTO Users (first_name, last_name, username, email, password, role, status, image)
+            VALUES ('John', 'Doe', 'user1', 'user1@example.com', %s, 'user', 'active', NULL)
             """, (hashed_password,))
             
             conn.commit()
@@ -160,20 +159,20 @@ def create_default_products(cursor, conn):
         if count == 0:
             print("Creating default products")
             products = [
-                ("Fresh Apples", 2.00, 50, "images/apple.png"),
-                ("Organic Bananas", 1.50, 30, "images/banana.png"),
-                ("Fresh Broccoli", 1.80, 25, "images/broccoli.png"),
-                ("Whole Wheat Bread", 2.50, 20, "images/bread.png"),
-                ("Almond Milk", 3.00, 15, None),
-                ("Eggs", 2.00, 40, None),
-                ("Chicken Breast", 8.00, 10, None),
-                ("Brown Rice", 2.00, 35, None)
+                ("Fresh Apples", 2.00, 50, "available", None),
+                ("Organic Bananas", 1.50, 30, "available", None),
+                ("Fresh Broccoli", 1.80, 25, "available", None),
+                ("Whole Wheat Bread", 2.50, 20, "available", None),
+                ("Almond Milk", 3.00, 15, "available", None),
+                ("Eggs", 2.00, 40, "available", None),
+                ("Chicken Breast", 8.00, 10, "available", None),
+                ("Brown Rice", 2.00, 35, "available", None)
             ]
             
             for product in products:
                 cursor.execute("""
-                INSERT INTO Products (name, price, stock, image_path)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO Products (name, price, stock, status, image)
+                VALUES (%s, %s, %s, %s, %s)
                 """, product)
             
             conn.commit()
@@ -216,7 +215,7 @@ class SuperMarketApp:
     def load_background_image(self):
         """Load and prepare the background image"""
         try:
-            image_path = "images/supermarket_background.png"
+            image_path = "images/landing.jpg"
             if not os.path.exists(image_path):
                 raise FileNotFoundError(f"Background image {image_path} not found")
             

@@ -12,7 +12,7 @@ DB_CONFIG = {
     "host": "127.0.0.1",
     "user": "root",
     "password": "new_password",
-    "database": "supermarket123",
+    "database": "supermarkettest",
    
 }
 
